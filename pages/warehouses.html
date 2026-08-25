@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HEAD STORE — Almacenes</title>
+  <link rel="stylesheet" href="../css/styles.css" />
+</head>
+
+<body>
+  <div class="app-layout">
+    <aside class="sidebar"></aside>
+    <div class="main-content">
+      <div class="topbar">
+        <span class="topbar-title">// ALMACENES</span>
+        <div class="topbar-actions">
+          <!-- Botón solo visible para ADMIN -->
+          <button id="btn-new-warehouse" class="btn btn-primary" onclick="openCreate()" style="display:none;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+            Nuevo Almacén
+          </button>
+        </div>
+      </div>
+      <div class="page-content">
+
+
+
+        <div id="warehouses-grid"
+          style="display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:16px;">
+          <div class="stat-card">
+            <div class="stat-label">Cargando...</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Crear/Editar (solo ADMIN llega aquí) -->
+  <div class="modal-overlay" id="modal-warehouse">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 id="modal-title">Nuevo Almacén</h3>
+        <button class="btn btn-ghost btn-icon" onclick="Modal.close('modal-warehouse')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="wh-id" />
+        <div class="form-row cols-2">
+          <div>
+            <label class="field-label">Nombre *</label>
+            <input type="text" id="wh-name" class="field-input" placeholder="Almacén Central" />
+          </div>
+          <div>
+            <label class="field-label">Código *</label>
+            <input type="text" id="wh-code" class="field-input" placeholder="ALM-001" />
+          </div>
+        </div>
+        <div class="form-row cols-2 mt-4">
+          <div>
+            <label class="field-label">Ciudad</label>
+            <input type="text" id="wh-city" class="field-input" placeholder="Ciudad de México" />
+          </div>
+          <div>
+            <label class="field-label">Estado</label>
+            <input type="text" id="wh-state" class="field-input" placeholder="CDMX" />
+          </div>
+        </div>
+        <div class="mt-4">
+          <label class="field-label">Dirección</label>
+          <textarea id="wh-address" class="field-input" placeholder="Dirección completa..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="Modal.close('modal-warehouse')">Cancelar</button>
+        <button class="btn btn-primary" id="btn-wh-save">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../js/config.js"></script>
+  <script src="../js/auth.js"></script>
+  <script src="../js/utils.js"></script>
+  <script src="../pages_js/almacenes.js"></script>
+
+
+</body>
+
+</html>

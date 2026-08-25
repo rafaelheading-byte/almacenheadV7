@@ -1,0 +1,143 @@
+<!-- =========================================================
+HEAD STORE
+MOVIMIENTOS — Inventario + Herramientas
+VERSIÓN CORREGIDA Y OPTIMIZADA
+========================================================= -->
+
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HEAD STORE — Movimientos</title>
+
+  <link rel="stylesheet" href="../css/styles.css" />
+  <link rel="stylesheet" href="../css/movimens.css">
+
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"
+    onerror="console.error('ERROR: jsPDF no pudo cargarse')"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jspdf-autotable@3.5.29/dist/jspdf.plugin.autotable.min.js"
+    onerror="console.error('ERROR: jsPDF-AutoTable no pudo cargarse')"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+</head>
+
+<body>
+
+  <div class="app-layout">
+
+    <aside class="sidebar"></aside>
+
+    <div class="main-content">
+
+      <div class="topbar">
+
+        <span class="topbar-title">// MOVIMIENTOS</span>
+
+        <div class="topbar-actions">
+
+          <!-- ── Source toggle ── -->
+          <div class="source-toggle">
+            <button class="source-btn" id="btn-inventory" onclick="setSource('inventory')">🗃️ Inventario</button>
+            <!--<button class="source-btn active" id="btn-all" onclick="setSource('all')">📦 Todos</button>-->
+            <button class="source-btn" id="btn-tools" onclick="setSource('tools')">🔧 Herramienta</button>
+          </div>
+
+          <div class="search-bar">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+
+            <input type="text" id="search-input" placeholder="Buscar producto / herramienta..." />
+          </div>
+
+          <select id="filter-type" class="field-input" style="width:150px;">
+            <!-- <option value="">Todos</option> -->
+            <option value="ENTRADA">Entradas</option>
+            <option value="SALIDA">Salidas</option>
+            <option value="TRANSFERENCIA">Transferencias</option>
+          </select>
+
+          <input type="date" id="filter-date-from" class="field-input" style="width:145px;" />
+
+          <input type="date" id="filter-date-to" class="field-input" style="width:145px;" />
+
+          <div class="date-range-tag" id="range-tag">
+            <span id="range-tag-text"></span>
+
+            <button type="button" onclick="clearDates()">×</button>
+          </div>
+
+        </div>
+
+      </div>
+
+      <div class="page-content">
+
+
+
+        <div class="table-card">
+
+          <div class="table-header">
+            <h3 id="table-title">Historial de Movimientos</h3>
+
+            <div class="report-btn-group">
+              <span id="record-count" class="text-muted"></span>
+
+              <button class="btn btn-primary btn-sm" onclick="generateReport()">
+                Descargar Excel
+              </button>
+            </div>
+          </div>
+
+          <div class="table-wrap">
+
+            <table>
+
+              <thead>
+                <tr id="table-head-row">
+                  <!-- Filled dynamically by renderTableHead() -->
+                </tr>
+              </thead>
+
+              <tbody id="movements-body">
+                <tr>
+                  <td colspan="10">
+                    <div class="page-loader">
+                      <div class="spinner"></div>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+
+            </table>
+
+          </div>
+
+          <div id="pagination" style="
+            padding:14px 20px;
+            display:flex;
+            gap:8px;
+            align-items:center;
+            border-top:1px solid #efefef;
+          "></div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+  <script src="../js/config.js"></script>
+  <script src="../js/auth.js"></script>
+  <script src="../js/utils.js"></script>
+
+  <script src="../pages_js/movimens.js"></script>
+</body>
+
+</html>

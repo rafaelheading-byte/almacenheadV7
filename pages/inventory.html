@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>HEAD STORE — Inventario</title>
+    <link rel="stylesheet" href="../css/styles.css" />
+    <link rel="stylesheet" href="../css/inventory.css" />
+    <!-- SheetJS para leer Excel en el navegador -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+
+</head>
+
+<body>
+    <div class="app-layout">
+        <aside class="sidebar"></aside>
+        <div class="main-content">
+            <div class="topbar">
+                <button id="menu-toggle" class="menu-toggle btn-ghost btn-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 6h18M3 12h18M3 18h18" />
+                    </svg>
+                </button>
+                <span class="topbar-title">// INVENTARIO</span>
+                <div class="topbar-actions">
+                    <div class="search-bar">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="11" cy="11" r="8" />
+                            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                        </svg>
+                        <input type="text" id="search-input" placeholder="Buscar producto..." />
+                    </div>
+                    <select id="filter-status" class="field-input" style="width:100px;">
+                        <option value="">Todos los estados</option>
+                        <option value="NORMAL">Normal</option>
+                        <option value="LOW">Stock bajo</option>
+                        <option value="OUT">Agotado</option>
+                    </select>
+                    <select id="filter-warehouse" class="field-input" style="width:160px;">
+                        <option value="">Todos los almacenes</option>
+                    </select>
+                    <!-- Carga Masiva: solo ADMIN y SUPERVISOR -->
+                    <button id="btn-bulk" class="btn btn-secondary" onclick="openBulk()" style="display:none;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                            <polyline points="17 8 12 3 7 8" />
+                            <line x1="12" y1="3" x2="12" y2="15" />
+                        </svg>
+                        Carga Masiva
+                    </button>
+                    <!-- Ajuste de Inventario: solo ADMIN y SUPERVISOR -->
+                    <button id="btn-adjust" class="btn btn-secondary" onclick="openAdjustModal()" style="display:none;"
+                        title="Ajuste de Inventario">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="3" />
+                            <path d="M19.07 4.93a10 10 0 0 1 0 14.14M4.93 4.93a10 10 0 0 0 0 14.14" />
+                            <line x1="12" y1="2" x2="12" y2="5" />
+                            <line x1="12" y1="19" x2="12" y2="22" />
+                        </svg>
+                        Ajuste
+                    </button>
+                    <!-- Exportar Excel -->
+                    <button id="btn-export-excel" class="btn btn-secondary" onclick="exportInventoryExcel()"
+                        title="Exportar Inventario a Excel">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                            <polyline points="14 2 14 8 20 8" />
+                            <polyline points="8 13 10.5 16 8 19" />
+                            <polyline points="14 13 16.5 16 14 19" />
+                        </svg>
+                        Exportar Excel
+                    </button>
+                    <button id="btn-entry" class="btn btn-primary" onclick="openEntryModal()" style="display:none;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                            <line x1="12" y1="5" x2="12" y2="19" />
+                            <line x1="5" y1="12" x2="19" y2="12" />
+                        </svg>
+                        Registrar Entrada
+                    </button>
+                    <button id="btn-exit" class="btn btn-secondary" onclick="openExitModal()" style="display:none;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                            <line x1="5" y1="12" x2="19" y2="12" />
+                        </svg>
+                        Registrar Salida
+                    </button>
+                </div>
+            </div>
+            <div class="table-card">
+                <div class="table-header">
+                    <h3>Estado del Inventario</h3>
+                    <span id="record-count" class="text-muted"></span>
+                </div>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Código</th>
+                                <th>Producto</th>
+                                <th>Categoría</th>
+                                <th>Almacén</th>
+                                <th>Stock</th>
+                                <th>Mín.</th>
+                                <th>Estado</th>
+                                <th>Últ. Movimiento</th>
+                            </tr>
+                        </thead>
+                        <tbody id="inventory-body">
+                            <tr>
+                                <td colspan="8">
+                                    <div class="page-loader">
+                                        <div class="spinner"></div>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div id="pagination" style="
+                        display:flex;
+                        gap:10px;
+                        justify-content:center;
+                        align-items:center;
+                        padding:16px;
+                    ">
+                </div>
+            </div>
+        </div>
+    </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════
+     MODAL ENTRADA
+════════════════════════════════════════════ -->
+    <div class="modal-overlay" id="modal-entry">
+        <div class="modal" style="max-width: 600px;">
+            <div class="modal-header">
+                <h3>📦 Registrar Entrada</h3>
+                <button class="btn btn-ghost btn-icon" id="btn-entry-close" onclick="Modal.close('modal-entry')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <line x1="18" y1="6" x2="6" y2="18" />
+                        <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-row cols-2">
+                    <div>
+                        <label class="field-label">Almacén *</label>
+                        <select id="entry-warehouse" class="field-input"></select>
+                    </div>
+                    <div>
+                        <label class="field-label">Proveedor</label>
+                        <select id="entry-supplier" class="field-input">
+                            <option value="">Sin proveedor</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Sección dinámica de insumos -->
+                <div
+                    style="margin-top: 18px; padding: 14px 16px; background: var(--gray-pale); border-radius: 6px; border: 1px solid #e0e0e0;">
+                    <div
+                        style="font-size: 0.76rem; font-weight: 700; color: var(--black); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px;">
+                        📦 Insumos a Ingresar</div>
+                    <div
+                        style="display: grid; grid-template-columns: 1fr 1.2fr 100px auto; gap: 10px; align-items: flex-end;">
+                        <div>
+                            <label class="field-label" style="font-size: 0.7rem; margin-bottom: 4px;">Buscar por
+                                Código/Nombre</label>
+                            <input type="text" id="entry-product-search" class="field-input"
+                                placeholder="Escribe para filtrar..." style="background: white;" />
+                        </div>
+                        <div>
+                            <label class="field-label" style="font-size: 0.7rem; margin-bottom: 4px;">Producto *</label>
+                            <select id="entry-product" class="field-input" style="background: white;"></select>
+                        </div>
+                        <div>
+                            <label class="field-label" style="font-size: 0.7rem; margin-bottom: 4px;">Cantidad *</label>
+                            <input type="number" id="entry-quantity" class="field-input" min="1" placeholder="0"
+                                style="background: white;" />
+                        </div>
+                        <div>
+                            <button type="button" class="btn btn-primary" id="btn-add-entry-item"
+                                style="padding: 10px; height: 38px; display: flex; align-items: center; justify-content: center;">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                                    style="width: 16px; height: 16px;">
+                                    <line x1="12" y1="5" x2="12" y2="19" />
+                                    <line x1="5" y1="12" x2="19" y2="12" />
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Tabla de insumos agregados -->
+                    <div
+                        style="margin-top: 14px; max-height: 160px; overflow-y: auto; background: white; border: 1px solid #ddd; border-radius: 4px; padding: 8px;">
+                        <div id="entry-items-list">
+                            <!-- Inyectado dinámicamente -->
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-4">
+                    <label class="field-label">Notas / Observaciones</label>
+                    <textarea id="entry-notes" class="field-input" placeholder="Observaciones opcionales..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="btn-entry-cancel"
+                    onclick="Modal.close('modal-entry')">Cancelar</button>
+                <button class="btn btn-primary" id="btn-entry-save">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        style="width:15px;height:15px;">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                        <polyline points="14 2 14 8 20 8" />
+                        <line x1="12" y1="18" x2="12" y2="12" />
+                        <line x1="9" y1="15" x2="12" y2="12" />
+                        <line x1="15" y1="15" x2="12" y2="12" />
+                    </svg>
+                    Registrar Entrada y Descargar PDF
+                </button>
+            </div>
+        </div>
+    </div>
+
+
+
+    <!-- ═══════════════════════════════════════════
+     MODAL SALIDA
+════════════════════════════════════════════ -->
+    <div class="modal-overlay" id="modal-exit">
+        <div class="modal" style="max-width: 600px;">
+            <div class="modal-header">
+                <h3>📤 Registrar Salida</h3>
+                <button class="btn btn-ghost btn-icon" id="btn-exit-close" onclick="Modal.close('modal-exit')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <line x1="18" y1="6" x2="6" y2="18" />
+                        <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="form-row cols-2">
+                    <div>
+                        <label class="field-label">Almacén *</label>
+                        <select id="exit-warehouse" class="field-input"></select>
+                    </div>
+                    <div>
+                        <label class="field-label" id="exit-destination-label">Tipo Salida / Obra *</label>
+                        <select id="exit-project" class="field-input">
+                            <option value="">Sin Tipo de salida</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Sección dinámica de insumos -->
+                <div
+                    style="margin-top: 18px; padding: 14px 16px; background: var(--gray-pale); border-radius: 6px; border: 1px solid #e0e0e0;">
+                    <div
+                        style="font-size: 0.76rem; font-weight: 700; color: var(--black); margin-bottom: 10px; text-transform: uppercase; letter-spacing: 0.5px;">
+                        📦 Insumos a Egresar</div>
+                    <div
+                        style="display: grid; grid-template-columns: 1fr 1.2fr 100px auto; gap: 10px; align-items: flex-end;">
+                        <div>
+                            <label class="field-label" style="font-size: 0.7rem; margin-bottom: 4px;">Buscar por
+                                Código/Nombre</label>
+                            <input type="text" id="exit-product-search" class="field-input"
+                                placeholder="Escribe para filtrar..." style="background: white;" />
+                        </div>
+                        <div>
+                            <label class="field-label" style="font-size: 0.7rem; margin-bottom: 4px;">Producto *</label>
+                            <select id="exit-product" class="field-input" style="background: white;"></select>
+                            <!-- Indicador de stock actual -->
+                            <div id="exit-stock-info"
+                                style="margin-top:5px; display:none; font-size:0.72rem; padding:4px 8px; border-radius:4px; font-weight:600;">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="field-label" style="font-size: 0.7rem; margin-bottom: 4px;">Cantidad *</label>
+                            <input type="number" id="exit-quantity" class="field-input" min="1" placeholder="0"
+                                style="background: white;" />
+                        </div>
+                        <div>
+                            <button type="button" class="btn btn-primary" id="btn-add-exit-item"
+                                style="padding: 10px; height: 38px; display: flex; align-items: center; justify-content: center;">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+                                    style="width: 16px; height: 16px;">
+                                    <line x1="12" y1="5" x2="12" y2="19" />
+                                    <line x1="5" y1="12" x2="19" y2="12" />
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Tabla de insumos agregados -->
+                    <div
+                        style="margin-top: 14px; max-height: 160px; overflow-y: auto; background: white; border: 1px solid #ddd; border-radius: 4px; padding: 8px;">
+                        <div id="exit-items-list">
+                            <!-- Inyectado dinámicamente -->
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-4">
+                    <label class="field-label">Notas / Observaciones</label>
+                    <textarea id="exit-notes" class="field-input" placeholder="Observaciones opcionales..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="btn-exit-cancel"
+                    onclick="Modal.close('modal-exit')">Cancelar</button>
+                <button class="btn btn-primary" id="btn-exit-save">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        style="width:15px;height:15px;">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                        <polyline points="14 2 14 8 20 8" />
+                        <line x1="12" y1="18" x2="12" y2="12" />
+                        <line x1="9" y1="15" x2="12" y2="12" />
+                        <line x1="15" y1="15" x2="12" y2="12" />
+                    </svg>
+                    Registrar Salida y Descargar PDF
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════
+     MODAL AJUSTE MASIVO DE INVENTARIO
+════════════════════════════════════════════ -->
+    <div class="modal-overlay adj-bulk-modal" id="modal-adjust">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>⚖️ Ajuste Masivo de Inventario</h3>
+                <button class="btn btn-ghost btn-icon" onclick="Modal.close('modal-adjust')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <line x1="18" y1="6" x2="6" y2="18" />
+                        <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                </button>
+            </div>
+            <div class="modal-body">
+
+                <!-- Fila superior: Almacén + Motivo -->
+                <div class="form-row cols-2">
+                    <div>
+                        <label class="field-label">Almacén *</label>
+                        <select id="adj-warehouse" class="field-input"></select>
+                    </div>
+                    <div>
+                        <label class="field-label">Motivo del Ajuste * <span
+                                style="font-size:0.72rem;color:var(--gray-light);">(requerido)</span></label>
+                        <input type="text" id="adj-reason" class="field-input"
+                            placeholder="Ej: Conteo físico, merma, corrección de error..." />
+                    </div>
+                </div>
+
+                <!-- Tabla de ítems -->
+                <div class="adj-items-table-wrap">
+                    <table class="adj-items-table">
+                        <thead>
+                            <tr>
+                                <th class="td-product">Producto</th>
+                                <th class="td-stock">Stock Actual</th>
+                                <th class="td-type">Tipo de Ajuste</th>
+                                <th class="td-qty">Cantidad</th>
+                                <th class="td-new">Stock Nuevo</th>
+                                <th class="td-del"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="adj-items-body">
+                            <!-- Rows generadas dinámicamente -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Fila para agregar producto -->
+                <div class="adj-add-row-wrap" style="position:relative;">
+                    <input type="text" id="adj-product-search" class="adj-search-input"
+                        placeholder="🔍 Buscar y agregar producto (código o nombre)..." autocomplete="off" />
+                    <div id="adj-product-dropdown" class="adj-product-dropdown" style="display:none;"></div>
+                    <button class="btn btn-secondary" id="btn-adj-clear-search" type="button"
+                        style="white-space:nowrap; font-size:0.8rem;">Limpiar</button>
+                </div>
+
+                <!-- Barra de resumen -->
+                <div class="adj-summary-bar" id="adj-summary-bar">
+                    <span class="summ-item summ-total">📋 <span id="adj-summ-total">0</span> ítems</span>
+                    <span class="summ-item summ-up">▲ <span id="adj-summ-up">0</span> incrementos</span>
+                    <span class="summ-item summ-down">▼ <span id="adj-summ-down">0</span> decrementos</span>
+                    <span class="summ-item summ-set">= <span id="adj-summ-set">0</span> fijaciones</span>
+                </div>
+
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="Modal.close('modal-adjust')">Cancelar</button>
+                <button class="btn btn-primary" id="btn-adj-save" disabled>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                        style="width:15px;height:15px;">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                        <polyline points="14 2 14 8 20 8" />
+                        <line x1="12" y1="18" x2="12" y2="12" />
+                        <line x1="9" y1="15" x2="12" y2="12" />
+                        <line x1="15" y1="15" x2="12" y2="12" />
+                    </svg>
+                    Aplicar Ajuste Masivo
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════
+     MODAL CARGA MASIVA
+════════════════════════════════════════════ -->
+    <div class="modal-overlay bulk-modal" id="modal-bulk">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>📊 Carga Masiva de Inventario</h3>
+                <button class="btn btn-ghost btn-icon" onclick="closeBulk()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <line x1="18" y1="6" x2="6" y2="18" />
+                        <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                </button>
+            </div>
+
+            <div class="modal-body">
+                <!-- Steps -->
+                <div class="steps">
+                    <div class="step active" id="step-tab-1"><span class="step-num">1</span>Subir archivo</div>
+                    <div class="step" id="step-tab-2"><span class="step-num">2</span>Vista previa</div>
+                    <div class="step" id="step-tab-3"><span class="step-num">3</span>Resultado</div>
+                </div>
+
+                <!-- PASO 1: Subir archivo -->
+                <div id="bulk-step-1">
+                    <div class="upload-zone" id="upload-zone">
+                        <input type="file" id="bulk-file-input" accept=".xlsx,.xls" />
+                        <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="1.5">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                            <polyline points="14 2 14 8 20 8" />
+                            <line x1="12" y1="18" x2="12" y2="12" />
+                            <line x1="9" y1="15" x2="12" y2="12" />
+                            <line x1="15" y1="15" x2="12" y2="12" />
+                        </svg>
+                        <p><strong>Arrastra tu archivo Excel aquí</strong> o haz clic para seleccionar</p>
+                        <span>Formatos aceptados: .xlsx, .xls · Máximo 200 filas de datos</span>
+                    </div>
+
+                    <div
+                        style="margin-top:18px; padding:14px 16px; background:var(--gray-pale); border-radius:4px; border:1px solid #e0e0e0;">
+                        <div style="font-size:0.8rem; font-weight:600; color:var(--black); margin-bottom:8px;">📋
+                            Columnas requeridas en la hoja "INVENTARIO":</div>
+                        <div
+                            style="display:grid; grid-template-columns:1fr 1fr; gap:4px 20px; font-size:0.78rem; color:var(--gray-mid);">
+                            <span>• <strong>codigo_producto</strong> — código del producto</span>
+                            <span>• <strong>stock_inicial</strong> — cantidad a cargar</span>
+                            <span>• <strong>nombre_producto</strong> — referencia visual</span>
+                            <span>• <strong>stock_minimo</strong> — mínimo (opcional)</span>
+                            <span>• <strong>unidad</strong> — pza, kg, m, lt…</span>
+                            <span>• <strong>almacen_codigo</strong> — código del almacén</span>
+                            <span>• <strong>categoria</strong> — categoría (opcional)</span>
+                            <span>• <strong>notas</strong> — observaciones (opcional)</span>
+                        </div>
+                        <div
+                            style="margin-top:12px; padding-top:10px; border-top:1px solid #ddd; display:flex; align-items:center; justify-content:space-between;">
+                            <span style="font-size:0.78rem; color:var(--gray-mid);">¿No tienes la plantilla?</span>
+                            <a id="btn-download-template" href="#" class="btn btn-secondary btn-sm"
+                                onclick="downloadTemplate(event)">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                    <polyline points="7 10 12 15 17 10" />
+                                    <line x1="12" y1="15" x2="12" y2="3" />
+                                </svg>
+                                Descargar Plantilla Excel
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PASO 2: Vista previa y validación -->
+                <div id="bulk-step-2" style="display:none;">
+                    <div class="summary-chips" id="bulk-summary"></div>
+
+                    <div class="preview-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Código Producto</th>
+                                    <th>Nombre</th>
+                                    <th>Almacén</th>
+                                    <th>Stock</th>
+                                    <th>Mín.</th>
+                                    <th>Notas</th>
+                                    <th>Estado</th>
+                                </tr>
+                            </thead>
+                            <tbody id="preview-body"></tbody>
+                        </table>
+                    </div>
+
+                    <div
+                        style="margin-top:14px; padding:10px 14px; background:#fffbea; border:1px solid #f0d060; border-radius:4px; font-size:0.78rem; color:#7a5e00;">
+                        ⚠ Las filas con errores <strong>no se cargarán</strong>. Las filas válidas sí se procesarán.
+                        Revisa antes de confirmar.
+                    </div>
+                </div>
+
+                <!-- PASO 3: Resultado -->
+                <div id="bulk-step-3" style="display:none;">
+                    <div class="summary-chips" id="bulk-result-summary"></div>
+                    <div class="progress-bar-wrap">
+                        <div class="progress-bar" id="bulk-progress"></div>
+                    </div>
+                    <div class="result-log" id="result-log"></div>
+                </div>
+            </div>
+
+            <div class="modal-footer" id="bulk-footer">
+                <button class="btn btn-secondary" onclick="closeBulk()">Cancelar</button>
+                <button class="btn btn-primary" id="btn-bulk-action" disabled>Procesar archivo</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts principales -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../js/config.js"></script>
+    <script src="../js/auth.js"></script>
+    <script src="../js/utils.js"></script>
+    <script src="../pages_js/inventory.js"></script>
+    <!-- jsPDF y jsPDF-AutoTable para generar vales en PDF -->
+    <script src="https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js"
+        onerror="console.error('ERROR: jsPDF no pudo cargarse desde unpkg.com')">
+        </script>
+    <script src="https://unpkg.com/jspdf-autotable@3.5.29/dist/jspdf.plugin.autotable.min.js"
+        onerror="console.error('ERROR: jsPDF-AutoTable no pudo cargarse desde unpkg.com')">
+        </script>
+</body>
+
+</html>

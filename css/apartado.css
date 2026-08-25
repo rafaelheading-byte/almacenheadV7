@@ -1,0 +1,176 @@
+/* ── Badge overrides and styles for Apartados ── */
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 10px;
+    border-radius: 99px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.status-pendiente {
+    background: rgba(230, 126, 34, 0.12);
+    color: #c0620a;
+}
+
+.status-completado {
+    background: rgba(39, 174, 96, 0.12);
+    color: #1a8a4a;
+}
+
+.status-cancelado {
+    background: rgba(224, 53, 53, 0.12);
+    color: #b52525;
+}
+
+/* Search dropdown for product selector */
+.search-container {
+    position: relative;
+    flex: 1;
+}
+
+.product-dropdown {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+    z-index: 9999;
+    max-height: 200px;
+    overflow-y: auto;
+    display: none;
+}
+
+.product-dropdown.open {
+    display: block;
+}
+
+.product-dropdown-item {
+    padding: 8px 12px;
+    font-size: 0.82rem;
+    cursor: pointer;
+    transition: background 100ms;
+    display: flex;
+    justify-content: space-between;
+}
+
+.product-dropdown-item:hover {
+    background: rgba(245, 196, 0, 0.15);
+}
+
+.product-dropdown-item .item-code {
+    font-size: 0.72rem;
+    color: var(--gray-light);
+    font-family: var(--font-mono);
+}
+
+/* Items table in modal */
+.items-table-wrap {
+    max-height: 250px;
+    overflow-y: auto;
+    border: 1px solid #e5e5e5;
+    border-radius: 6px;
+    margin-top: 14px;
+    background: #fff;
+}
+
+.items-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.82rem;
+}
+
+.items-table th {
+    background: #f7f7f7;
+    padding: 8px 10px;
+    font-size: 0.70rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: var(--gray-mid);
+    border-bottom: 1px solid #e5e5e5;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+.items-table td {
+    padding: 8px 10px;
+    border-bottom: 1px solid #f0f0f0;
+    vertical-align: middle;
+}
+
+.items-table tr:last-child td {
+    border-bottom: none;
+}
+
+.qty-input {
+    width: 80px;
+    padding: 4px 8px;
+    font-size: 0.8rem;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    text-align: right;
+    font-family: var(--font-mono);
+}
+
+.btn-delete-row {
+    border: none;
+    background: none;
+    cursor: pointer;
+    color: #bbb;
+    padding: 4px;
+    border-radius: 4px;
+    transition: color 150ms, background 150ms;
+}
+
+.btn-delete-row:hover {
+    color: var(--red);
+    background: rgba(224, 53, 53, 0.08);
+}
+
+.disabled-form input,
+.disabled-form select,
+.disabled-form textarea {
+    background: #f5f5f5 !important;
+    color: #666 !important;
+    cursor: not-allowed !important;
+    border-color: #e0e0e0 !important;
+}
+
+/* Detail modal custom styling */
+.detail-row {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.detail-field {
+    display: flex;
+    flex-direction: column;
+}
+
+.detail-field label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--gray-mid);
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.detail-field .value {
+    font-size: 0.88rem;
+    padding: 6px 10px;
+    background: #fafafa;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    min-height: 32px;
+    display: flex;
+    align-items: center;
+}

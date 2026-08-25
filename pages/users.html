@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HEAD STORE — Usuarios</title>
+  <link rel="stylesheet" href="../css/styles.css" />
+  <link rel="stylesheet" href="../css/user.css" />
+</head>
+
+<body>
+  <div class="app-layout">
+    <aside class="sidebar"></aside>
+    <div class="main-content">
+      <div class="topbar">
+        <span class="topbar-title">// USUARIOS</span>
+        <div class="topbar-actions">
+          <div class="search-bar">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+            <input type="text" id="search-input" placeholder="Buscar usuario..." />
+          </div>
+          <button class="btn btn-primary" onclick="openCreate()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+            Nuevo Usuario
+          </button>
+        </div>
+      </div>
+      <div class="page-content">
+        <div class="table-card">
+          <div class="table-header">
+            <h3>Usuarios del Sistema</h3>
+            <span id="record-count" class="text-muted"></span>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Usuario</th>
+                  <th>Email</th>
+                  <th>Rol</th>
+                  <th>Almacén(es)</th>
+                  <th>Teléfono</th>
+                  <th>Estado</th>
+                  <th>Creado</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="users-body">
+                <tr>
+                  <td colspan="8">
+                    <div class="page-loader">
+                      <div class="spinner"></div>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal -->
+  <div class="modal-overlay" id="modal-user">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 id="modal-title">Nuevo Usuario</h3>
+        <button class="btn btn-ghost btn-icon" onclick="Modal.close('modal-user')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="user-id" />
+        <div class="form-row cols-2">
+          <div>
+            <label class="field-label">Nombre Completo *</label>
+            <input type="text" id="user-name" class="field-input" placeholder="Juan Pérez" />
+          </div>
+          <div>
+            <label class="field-label">Email *</label>
+            <input type="email" id="user-email" class="field-input" placeholder="usuario@empresa.com" />
+          </div>
+        </div>
+        <div class="form-row cols-2 mt-4">
+          <div>
+            <label class="field-label">Rol *</label>
+            <select id="user-role" class="field-input" onchange="onRoleChange(this.value)">
+              <option value="ALMACENISTA">Almacenista</option>
+              <option value="SUPERVISOR">Supervisor</option>
+              <option value="COORDINADOR">Coordinador</option>
+              <option value="ADMIN">Administrador</option>
+            </select>
+          </div>
+          <div>
+            <!-- Almacén único (STOREKEEPER / ADMIN) -->
+            <div id="warehouse-single-wrap">
+              <label class="field-label">Almacén</label>
+              <select id="user-warehouse" class="field-input">
+                <option value="">Sin almacén</option>
+              </select>
+            </div>
+            <!-- Almacenes múltiples (SUPERVISOR / ALMACENISTA) -->
+            <div id="warehouse-multi-wrap">
+              <label class="field-label">Almacenes Permitidos
+                <span id="wh-multi-span"
+                  style="font-weight:400;font-size:0.72rem;text-transform:none;letter-spacing:0;">(solo lectura en
+                  inventario)</span>
+              </label>
+              <div class="wh-checkboxes" id="wh-checkboxes-list">
+                <!-- Poblado dinámicamente -->
+              </div>
+              <div class="supervisor-note" id="wh-multi-note">Sin selección = acceso a todos los almacenes</div>
+            </div>
+          </div>
+        </div>
+        <div class="form-row cols-2 mt-4">
+          <div>
+            <label class="field-label">Teléfono</label>
+            <input type="tel" id="user-phone" class="field-input" placeholder="+52 55 1234 5678" />
+          </div>
+          <div id="password-field">
+            <label class="field-label">Contraseña <span id="pass-hint"
+                style="font-weight:400;text-transform:none;letter-spacing:0;">(requerida para nuevo)</span></label>
+            <input type="password" id="user-password" class="field-input" placeholder="Mín. 8 caracteres" />
+          </div>
+        </div>
+        <div
+          style="margin-top:16px; padding:12px; background:#fffbea; border:1px solid #f0d060; border-radius:4px; font-size:0.78rem; color:#7a5e00;">
+          ⚠ La contraseña se almacena hasheada. Para producción, integra Supabase Auth para manejo seguro de
+          autenticación.
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="Modal.close('modal-user')">Cancelar</button>
+        <button class="btn btn-primary" id="btn-user-save">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../js/config.js"></script>
+  <script src="../js/auth.js"></script>
+  <script src="../js/utils.js"></script>
+  <script src="../pages_js/user.js"></script>
+
+</body>
+
+</html>

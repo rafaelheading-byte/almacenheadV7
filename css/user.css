@@ -1,0 +1,63 @@
+/* ── Selector múltiple de almacenes para SUPERVISOR ── */
+#warehouse-multi-wrap {
+    display: none;
+}
+
+#warehouse-single-wrap {
+    display: block;
+}
+
+.wh-checkboxes {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    max-height: 140px;
+    overflow-y: auto;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    padding: 8px 10px;
+    background: #fff;
+    margin-top: 4px;
+}
+
+.wh-checkboxes label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.84rem;
+    cursor: pointer;
+    padding: 3px 0;
+    color: var(--black);
+    font-weight: 500;
+}
+
+.wh-checkboxes label input[type="checkbox"] {
+    accent-color: var(--yellow, #F5C400);
+    width: 15px;
+    height: 15px;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.supervisor-note {
+    margin-top: 6px;
+    font-size: 0.73rem;
+    color: var(--gray-light, #999);
+}
+
+.wh-badge-list {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
+.wh-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    background: rgba(245, 196, 0, 0.15);
+    border: 1px solid rgba(245, 196, 0, 0.4);
+    border-radius: 99px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: #7a5e00;
+}

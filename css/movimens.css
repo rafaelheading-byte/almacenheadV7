@@ -1,0 +1,109 @@
+/* ── Date range tag ── */
+.date-range-tag {
+    display: none;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 12px;
+    background: rgba(245, 196, 0, .15);
+    border: 1px solid rgba(245, 196, 0, .4);
+    border-radius: 99px;
+    font-size: .75rem;
+    font-weight: 600;
+    color: #7a5e00;
+}
+
+.date-range-tag.show {
+    display: flex;
+}
+
+.date-range-tag button {
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: #7a5e00;
+    font-size: 1rem;
+}
+
+.safe-note {
+    max-width: 200px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.report-btn-group {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+/* ── Source toggle buttons ── */
+.source-toggle {
+    display: flex;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.source-btn {
+    padding: 7px 14px;
+    background: var(--white, #fff);
+    border: none;
+    cursor: pointer;
+    color: #666;
+    font-size: 0.8rem;
+    font-weight: 600;
+    font-family: inherit;
+    transition: all 150ms;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    border-right: 1px solid #ddd;
+    white-space: nowrap;
+}
+
+.source-btn:last-child {
+    border-right: none;
+}
+
+.source-btn.active {
+    background: #0d0d0d;
+    color: #F5C400;
+}
+
+.source-btn:not(.active):hover {
+    background: #f5f5f5;
+}
+
+/* ── Source badge on combined rows ── */
+.src-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 3px 8px;
+    border-radius: 99px;
+    font-size: .68rem;
+    font-weight: 700;
+    letter-spacing: .3px;
+}
+
+.src-badge-inv {
+    background: rgba(26, 111, 160, .12);
+    color: #1a6fa0;
+}
+
+.src-badge-tool {
+    background: rgba(142, 68, 173, .12);
+    color: #7b3f99;
+}
+
+/* ── Tool status badges ── */
+.tool-status-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    border-radius: 99px;
+    font-size: .72rem;
+    font-weight: 700;
+}

@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HEAD STORE — Dashboard</title>
+  <link rel="stylesheet" href="../css/styles.css" />
+
+</head>
+
+<body>
+  <div class="app-layout">
+    <aside class="sidebar"></aside>
+    <div class="main-content">
+      <div class="topbar">
+        <span class="topbar-title">// DASHBOARD</span>
+        <div class="topbar-actions">
+          <span id="topbar-date" class="text-muted" style="font-size:0.78rem;"></span>
+        </div>
+      </div>
+      <div class="page-content">
+
+        <!-- Bienvenida con rol -->
+        <div id="welcome-bar"
+          style="margin-bottom:20px; padding:14px 18px; background:var(--white); border:1px solid #e4e4e4; border-radius:4px; display:flex; align-items:center; justify-content:space-between;">
+          <div>
+            <span style="font-family:var(--font-mono); font-size:0.82rem; color:var(--gray-mid);">BIENVENIDO</span>
+            <span id="welcome-name"
+              style="font-family:var(--font-mono); font-weight:700; font-size:0.9rem; margin-left:10px;"></span>
+          </div>
+          <div id="welcome-role"></div>
+        </div>
+
+        <!-- Stats -->
+        <div class="stats-grid" id="stats-grid">
+          <div class="stat-card">
+            <div class="stat-label">Cargando...</div>
+            <div class="stat-value">—</div>
+          </div>
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
+          <!-- Alertas de Stock -->
+          <div class="table-card">
+            <div class="table-header">
+              <h3>⚠ Stock Bajo / Agotado</h3>
+              <a href="./inventory.html" class="btn btn-ghost btn-sm">Ver inventario</a>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Producto</th>
+                    <th>Almacén</th>
+                    <th>Stock</th>
+                    <th>Estado</th>
+                  </tr>
+                </thead>
+                <tbody id="low-stock-body">
+                  <tr>
+                    <td colspan="4">
+                      <div class="page-loader">
+                        <div class="spinner"></div>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Últimos Movimientos -->
+          <div class="table-card">
+            <div class="table-header">
+              <h3>Últimos Movimientos</h3>
+              <a href="movements.html" class="btn btn-ghost btn-sm">Ver todos</a>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Tipo</th>
+                    <th>Producto</th>
+                    <th>Cant.</th>
+                    <th>Fecha</th>
+                  </tr>
+                </thead>
+                <tbody id="movements-body">
+                  <tr>
+                    <td colspan="4">
+                      <div class="page-loader">
+                        <div class="spinner"></div>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../js/config.js"></script>
+  <script src="../js/auth.js"></script>
+  <script src="../js/utils.js"></script>
+  <script src="../pages_js/dash.js"></script>
+</body>
+
+</html>

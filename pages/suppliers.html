@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HEAD STORE — Proveedores</title>
+  <link rel="stylesheet" href="../css/styles.css" />
+</head>
+
+<body>
+  <div class="app-layout">
+    <aside class="sidebar"></aside>
+    <div class="main-content">
+      <div class="topbar">
+        <span class="topbar-title">// PROVEEDORES</span>
+        <div class="topbar-actions">
+          <div class="search-bar">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+            <input type="text" id="search-input" placeholder="Buscar proveedor..." />
+          </div>
+          <!-- Solo ADMIN y SUPERVISOR pueden crear proveedores -->
+          <button id="btn-new-supplier" class="btn btn-primary" onclick="openCreate()" style="display:none;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+            Nuevo Proveedor
+          </button>
+        </div>
+      </div>
+      <div class="page-content">
+
+        <!-- Aviso solo lectura para STOREKEEPER -->
+        <div id="readonly-notice"
+          style="display:none; margin-bottom:16px; padding:12px 16px; background:#f0f4ff; border:1px solid #b0c4de; border-radius:4px; font-size:0.82rem; color:#2a4a7a;">
+          <strong>ℹ Vista de consulta:</strong> Puedes consultar el directorio de proveedores. Para agregar o modificar,
+          contacta a un administrador.
+        </div>
+
+        <div class="table-card">
+          <div class="table-header">
+            <h3>Proveedores</h3>
+            <span id="record-count" class="text-muted"></span>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Empresa</th>
+                  <th>Contacto</th>
+                  <th>Teléfono</th>
+                  <th>Email</th>
+                  <th>Registrado</th>
+                  <th id="actions-col"></th>
+                </tr>
+              </thead>
+              <tbody id="suppliers-body">
+                <tr>
+                  <td colspan="6">
+                    <div class="page-loader">
+                      <div class="spinner"></div>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Crear/Editar -->
+  <div class="modal-overlay" id="modal-supplier">
+    <div class="modal">
+      <div class="modal-header">
+        <h3 id="modal-title">Nuevo Proveedor</h3>
+        <button class="btn btn-ghost btn-icon" onclick="Modal.close('modal-supplier')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="sup-id" />
+        <div>
+          <label class="field-label">Nombre de Empresa *</label>
+          <input type="text" id="sup-company" class="field-input" placeholder="Empresa S.A. de C.V." />
+        </div>
+        <div class="mt-4">
+          <label class="field-label">Nombre de Contacto</label>
+          <input type="text" id="sup-contact" class="field-input" placeholder="Nombre del contacto" />
+        </div>
+        <div class="form-row cols-2 mt-4">
+          <div>
+            <label class="field-label">Teléfono</label>
+            <input type="tel" id="sup-phone" class="field-input" placeholder="+52 55 1234 5678" />
+          </div>
+          <div>
+            <label class="field-label">Email</label>
+            <input type="email" id="sup-email" class="field-input" placeholder="contacto@empresa.com" />
+          </div>
+        </div>
+        <div class="mt-4">
+          <label class="field-label">Dirección</label>
+          <textarea id="sup-address" class="field-input" placeholder="Dirección completa..."></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="Modal.close('modal-supplier')">Cancelar</button>
+        <button class="btn btn-primary" id="btn-sup-save">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../js/config.js"></script>
+  <script src="../js/auth.js"></script>
+  <script src="../js/utils.js"></script>
+
+  <script src="../pages_js/proveedores.js"></script>
+
+</body>
+
+</html>

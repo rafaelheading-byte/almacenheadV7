@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>HEAD STORE — Apartados</title>
+    <link rel="stylesheet" href="../css/styles.css" />
+    <link rel="stylesheet" href="../css/apartado.css" />
+
+</head>
+
+<body>
+    <div class="app-layout">
+        <aside class="sidebar"></aside>
+        <div class="main-content">
+            <div class="topbar">
+                <button id="menu-toggle" class="menu-toggle btn-ghost btn-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 6h18M3 12h18M3 18h18" />
+                    </svg>
+                </button>
+                <span class="topbar-title">// APARTADOS</span>
+                <div class="topbar-actions">
+                    <div class="search-bar">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="11" cy="11" r="8" />
+                            <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                        </svg>
+                        <input type="text" id="search-input" placeholder="Buscar folio..." />
+                    </div>
+                    <select id="filter-status" class="field-input" style="width:140px;">
+                        <option value="">Todos los estados</option>
+                        <option value="PENDIENTE">Pendientes</option>
+                        <option value="COMPLETADO">Completados</option>
+                        <option value="CANCELADO">Cancelados</option>
+                    </select>
+                    <select id="filter-warehouse" class="field-input" style="width:180px;">
+                        <option value="">Todos los almacenes</option>
+                    </select>
+                    <button id="btn-create-apartado" class="btn btn-primary" onclick="openCreateModal()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                            <line x1="12" y1="5" x2="12" y2="19" />
+                            <line x1="5" y1="12" x2="19" y2="12" />
+                        </svg>
+                        Nuevo Apartado
+                    </button>
+                </div>
+            </div>
+
+            <div class="table-card">
+                <div class="table-header">
+                    <h3>Registro de Apartados (Reservas)</h3>
+                    <span id="record-count" class="text-muted"></span>
+                </div>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Folio</th>
+                                <th>Requisición</th>
+                                <th>Pedido</th>
+                                <th>Almacén Origen</th>
+                                <th>Destino</th>
+                                <th>Fecha Registro</th>
+                                <th>Creado Por</th>
+                                <th>Folio Salida</th>
+                                <th>Estado</th>
+                                <th style="text-align:center;">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="apartados-body">
+                            <tr>
+                                <td colspan="10">
+                                    <div class="page-loader">
+                                        <div class="spinner"></div>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div id="pagination"
+                    style="display:flex; gap:10px; justify-content:center; align-items:center; padding:16px;">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════
+     MODAL APARTADO (CREACIÓN / EDICIÓN / DETALLE)
+    ════════════════════════════════════════════ -->
+    <div class="modal-overlay" id="modal-apartado">
+        <div class="modal" style="max-width: 700px;">
+            <div class="modal-header">
+                <h3 id="apartado-modal-title">📦 Nuevo Apartado</h3>
+                <button class="btn-close" onclick="closeApartadoModal()" id="btn-apartado-close">×</button>
+            </div>
+            <div class="modal-body" id="apartado-form-container">
+                <!-- Form Fields -->
+                <div class="detail-row">
+                    <div class="detail-field">
+                        <label class="field-label">Almacén Origen *</label>
+                        <select id="apartado-warehouse" class="field-input" onchange="onOriginWarehouseChange()">
+                            <option value="">Selecciona origen...</option>
+                        </select>
+                    </div>
+                    <div class="detail-field">
+                        <label class="field-label" id="apartado-destination-label">Tipo Salida / Obra *</label>
+                        <select id="apartado-destination" class="field-input">
+                            <option value="">Selecciona destino...</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="detail-row">
+                    <div class="detail-field">
+                        <label class="field-label">Requisición</label>
+                        <input type="number" id="apartado-requisicion" class="field-input"
+                            placeholder="Número de requisición..." min="1" step="1" />
+                    </div>
+                    <div class="detail-field">
+                        <label class="field-label">Pedido</label>
+                        <input type="number" id="apartado-pedido" class="field-input" placeholder="Número de pedido..."
+                            min="1" step="1" />
+                    </div>
+                </div>
+
+                <div class="detail-row" id="status-row" style="display:none;">
+                    <div class="detail-field">
+                        <label>Estado</label>
+                        <div id="apartado-status-badge-container"></div>
+                    </div>
+                    <div class="detail-field" id="exit-folio-container" style="display:none;">
+                        <label>Folio Salida Generado</label>
+                        <div class="value text-mono fw-600" id="apartado-exit-folio"></div>
+                    </div>
+                </div>
+
+                <!-- Add Items Form (only if editable) -->
+                <div id="add-item-section" style="margin-top: 15px; border-top: 1px solid #eee; padding-top: 15px;">
+                    <h4
+                        style="margin: 0 0 10px 0; font-size: 0.85rem; text-transform: uppercase; color: var(--gray-mid);">
+                        Agregar Insumos</h4>
+                    <div style="display:flex; gap:10px; align-items: center;">
+                        <div class="search-container">
+                            <input type="text" id="product-search" class="field-input"
+                                placeholder="Buscar por código o nombre..." autocomplete="off"
+                                oninput="onProductSearchInput()" />
+                            <div class="product-dropdown" id="product-dropdown-results"></div>
+                            <!-- Indicador de stock actual -->
+                            <div id="apartado-stock-info"
+                                style="margin-top:5px; display:none; font-size:0.72rem; padding:4px 8px; border-radius:4px; font-weight:600;">
+                            </div>
+                        </div>
+                        <input type="number" id="product-qty" class="field-input" placeholder="Cant."
+                            style="width:90px; text-align:right;" min="0.01" step="any" />
+                        <button class="btn btn-secondary" onclick="addInsumoToApartado()"
+                            style="padding: 9px 16px;">Agregar</button>
+                    </div>
+                </div>
+
+                <!-- Selected Items List -->
+                <div class="items-table-wrap">
+                    <table class="items-table">
+                        <thead>
+                            <tr>
+                                <th>Código</th>
+                                <th>Descripción</th>
+                                <th>Unidad</th>
+                                <th style="text-align:right; width:100px;">Cantidad</th>
+                                <th style="text-align:center; width:50px;" id="th-delete-header">Eliminar</th>
+                            </tr>
+                        </thead>
+                        <tbody id="apartado-items-body">
+                            <!-- Items row will append here -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Notes -->
+                <div style="margin-top: 15px;">
+                    <label class="field-label">Observaciones / Notas</label>
+                    <textarea id="apartado-notes" class="field-input" rows="3"
+                        placeholder="Notas internas..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer" style="display:flex; justify-content:space-between; align-items:center;">
+                <div>
+                    <button id="btn-apartado-cancel" class="btn btn-secondary" onclick="cancelApartado()"
+                        style="display:none; background:#ffebeb; color:var(--red); border-color:#fadbd8;">Cancelar
+                        Apartado</button>
+                </div>
+                <div style="display:flex; gap:10px;">
+                    <button id="btn-apartado-close-footer" class="btn btn-secondary"
+                        onclick="closeApartadoModal()">Cerrar</button>
+                    <button id="btn-apartado-save" class="btn btn-primary" onclick="saveApartado()">Guardar
+                        Apartado</button>
+                    <button id="btn-apartado-validate" class="btn btn-success" onclick="validateAndGenerateExit()"
+                        style="display:none; background:var(--green); color:white; border:none;">Generar Salida</button>
+                    <button id="btn-apartado-reprint" class="btn btn-secondary" onclick="reprintApartadoExitPDF()"
+                        style="display:none;">Reimprimir Vale</button>
+                    <button id="btn-apartado-print" class="btn btn-secondary" onclick="printApartadoPDF()"
+                        style="display:none;">Imprimir Apartado</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Supabase and App Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../js/config.js"></script>
+    <script src="../js/auth.js"></script>
+    <script src="../js/utils.js"></script>
+    <script src="../pages_js/apartado.js"></script>
+
+    <script src="https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js"
+        onerror="console.error('ERROR: jsPDF no pudo cargarse desde unpkg.com')"></script>
+    <script src="https://unpkg.com/jspdf-autotable@3.5.29/dist/jspdf.plugin.autotable.min.js"
+        onerror="console.error('ERROR: jsPDF-AutoTable no pudo cargarse desde unpkg.com')"></script>
+
+
+</body>
+
+</html>

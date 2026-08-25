@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HEAD STORE — Herramientas</title>
+  <meta name="description" content="Gestión de herramientas y equipos — HEAD STORE Sistema de Inventarios" />
+  <link rel="stylesheet" href="../css/styles.css" />
+  <link rel="stylesheet" href="../css/herramienta.css" />
+
+  <!-- QR library -->
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
+  <!-- SheetJS for Export to Excel -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+</head>
+
+<body>
+  <div class="app-layout">
+    <aside class="sidebar"></aside>
+    <div class="main-content">
+
+      <!-- ── Topbar ── -->
+      <div class="topbar">
+        <span class="topbar-title">// HERRAMIENTAS</span>
+        <div class="topbar-actions">
+          <div class="search-bar">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+            <input type="text" id="search-input" placeholder="Buscar herramienta, código, serie..." />
+          </div>
+
+          <select id="filter-status" class="field-input" style="width:160px;">
+            <option value="">Todos los estados</option>
+            <option value="ACTIVA">Activa</option>
+            <!--<option value="PARA_REPARACION">Para Reparación</option>-->
+            <option value="EN_MANTENIMIENTO">En mantenimiento</option>
+            <option value="REPARACION">Reparación</option>
+            <option value="RESGUARDO">resguardo</option>
+          </select>
+
+          <select id="filter-warehouse" class="field-input" style="width:160px;">
+            <option value="">Todos los almacenes</option>
+          </select>
+
+          <div class="view-toggle">
+            <button class="view-btn active" id="btn-view-grid" onclick="setView('grid')" title="Tarjetas">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="3" width="7" height="7" />
+                <rect x="14" y="3" width="7" height="7" />
+                <rect x="3" y="14" width="7" height="7" />
+                <rect x="14" y="14" width="7" height="7" />
+              </svg>
+            </button>
+            <button class="view-btn" id="btn-view-list" onclick="setView('list')" title="Lista">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="8" y1="6" x2="21" y2="6" />
+                <line x1="8" y1="12" x2="21" y2="12" />
+                <line x1="8" y1="18" x2="21" y2="18" />
+                <circle cx="3" cy="6" r="1" fill="currentColor" />
+                <circle cx="3" cy="12" r="1" fill="currentColor" />
+                <circle cx="3" cy="18" r="1" fill="currentColor" />
+              </svg>
+            </button>
+          </div>
+
+          <button id="btn-export-excel" class="btn btn-secondary" onclick="exportToolsExcel()"
+            title="Exportar Herramientas a Excel">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="14" height="14">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+              <polyline points="14 2 14 8 20 8" />
+              <line x1="16" y1="13" x2="8" y2="13" />
+              <line x1="16" y1="17" x2="8" y2="17" />
+              <polyline points="10 9 9 9 8 9" />
+            </svg>
+            Exportar Excel
+          </button>
+
+          <button class="btn btn-primary" id="btn-new-tool" onclick="openCreate()" style="display:none;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+            Nueva Herramienta
+          </button>
+        </div>
+      </div>
+
+      <!-- ── Main content ── -->
+      <div class="page-content">
+
+
+        <!-- Status pills -->
+        <div class="status-bar" id="status-bar"></div>
+
+        <!-- Grid view -->
+        <div id="view-grid" class="tool-grid">
+          <div style="grid-column:1/-1; padding:60px; text-align:center;">
+            <div class="spinner" style="margin:0 auto;"></div>
+          </div>
+        </div>
+
+        <!-- List view -->
+        <div id="view-list" class="table-card" style="display:none;">
+          <div class="table-header">
+            <h3>Listado de Herramientas</h3>
+            <span id="record-count" class="text-muted"></span>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>CódigoHEAD</th>
+                  <th>Nombre</th>
+                  <th>Tipo</th>
+                  <th>Marca / Modelo</th>
+                  <th>No. Serie</th>
+                  <th>Color</th>
+                  <th>Estado</th>
+                  <th>Proyecto</th>
+                  <th>Almacén</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="tool-list-body">
+                <tr>
+                  <td colspan="10">
+                    <div class="page-loader">
+                      <div class="spinner"></div>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div><!-- /page-content -->
+    </div><!-- /main-content -->
+  </div><!-- /app-layout -->
+
+  <!-- ═══════════════════════════════════════
+       MODAL: CREAR / EDITAR HERRAMIENTA
+  ═══════════════════════════════════════ -->
+  <div class="modal-overlay" id="modal-tool" style="align-items:flex-start; padding-top:28px;">
+    <div class="modal" style="max-width:580px;">
+      <div class="modal-header">
+        <h3 id="tool-modal-title">Nueva Herramienta</h3>
+        <button class="btn btn-ghost btn-icon" onclick="Modal.close('modal-tool')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="tool-id" />
+
+        <!-- Identificación -->
+        <div class="section-label">Identificación</div>
+        <div class="form-row cols-2">
+          <div>
+            <label class="field-label">CódigoHEAD *</label>
+            <input type="text" id="tool-codigo" class="field-input" placeholder="HEAD-001" />
+          </div>
+          <div>
+            <label class="field-label">Nombre *</label>
+            <input type="text" id="tool-nombre" class="field-input" placeholder="Nombre de la herramienta" />
+          </div>
+        </div>
+        <div class="mt-4">
+          <label class="field-label">Descripción</label>
+          <textarea id="tool-desc" class="field-input" rows="2"
+            placeholder="Descripción breve de la herramienta..."></textarea>
+        </div>
+
+        <!-- Características -->
+        <div class="section-label">Características</div>
+        <div class="form-row cols-2">
+          <div>
+            <label class="field-label">Tipo *</label>
+            <select id="tool-tipo" class="field-input">
+              <option value="">Selecciona tipo...</option>
+            </select>
+          </div>
+          <div>
+            <label class="field-label">Color</label>
+            <input type="text" id="tool-color" class="field-input" placeholder="Ej: Amarillo, Rojo..." readonly />
+            <div class="color-swatches" id="color-swatches"></div>
+          </div>
+        </div>
+        <div class="form-row cols-2 mt-4">
+          <div>
+            <label class="field-label">Marca</label>
+            <input type="text" id="tool-marca" class="field-input" placeholder="Ej: DeWalt, Bosch..." />
+          </div>
+          <div>
+            <label class="field-label">Modelo</label>
+            <input type="text" id="tool-modelo" class="field-input" placeholder="Ej: DCD996B" />
+          </div>
+        </div>
+        <div class="mt-4">
+          <label class="field-label">Número de Serie</label>
+          <input type="text" id="tool-serie" class="field-input" placeholder="SN-XXXXXXXXXX"
+            style="font-family:var(--font-mono);" />
+        </div>
+
+        <!-- Asignación -->
+        <div class="section-label">Asignación</div>
+        <div class="form-row cols-2">
+          <div>
+            <label class="field-label">Estado</label>
+            <select id="tool-status" class="field-input">
+              <option value="ACTIVA">Activa</option>
+              <option value="PERDIDA">Perdida</option>
+              <option value="EN_MANTENIMIENTO">En mantenimiento</option>
+              <option value="REPARACION">Reparación</option>
+              <option value="RESGUARDO">Resguardo</option>
+            </select>
+          </div>
+          <div>
+            <label class="field-label">Proyecto asignado</label>
+            <select id="tool-project" class="field-input">
+              <option value="">Sin proyecto</option>
+            </select>
+          </div>
+        </div>
+        <div class="mt-4">
+          <label class="field-label">Almacén de resguardo</label>
+          <select id="tool-warehouse" class="field-input">
+            <option value="">Sin almacén</option>
+          </select>
+        </div>
+        <div class="mt-4">
+          <label class="field-label">URL de imagen</label>
+          <input type="text" id="tool-image" class="field-input" placeholder="https://..." />
+        </div>
+
+        <!-- Notas (solo en edición) -->
+        <div class="mt-4" id="tool-notes-wrap" style="display:none;">
+          <label class="field-label">Notas del cambio</label>
+          <input type="text" id="tool-notes" class="field-input"
+            placeholder="Motivo del cambio de estado o asignación..." />
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="Modal.close('modal-tool')">Cancelar</button>
+        <button class="btn btn-primary" id="btn-tool-save">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════
+       MODAL: DETALLE DE HERRAMIENTA
+  ═══════════════════════════════════════ -->
+  <div class="modal-overlay detail-modal" id="modal-detail">
+    <div class="modal" style="max-width:600px;">
+      <div class="detail-header-band" id="detail-band"></div>
+      <div class="modal-header" style="border-bottom:1px solid #f0f0f0;">
+        <h3>Detalle de Herramienta</h3>
+        <div style="display:flex; gap:8px;">
+          <button class="btn btn-secondary btn-sm" id="detail-qr-btn" onclick="openQRFromDetail()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13">
+              <rect x="3" y="3" width="7" height="7" />
+              <rect x="14" y="3" width="7" height="7" />
+              <rect x="3" y="14" width="7" height="7" />
+              <rect x="14" y="14" width="4" height="4" />
+            </svg>
+            Ver QR
+          </button>
+          <button class="btn btn-secondary btn-sm" id="detail-bitacora-btn" onclick="openBitacoraFromDetail()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13">
+              <rect x="3" y="3" width="7" height="7" />
+              <rect x="14" y="3" width="7" height="7" />
+              <rect x="3" y="14" width="7" height="7" />
+              <rect x="14" y="14" width="4" height="4" />
+            </svg>
+            Imprimir bitacora
+          </button>
+          <button class="btn btn-primary btn-sm" id="detail-transfer-btn" onclick="openTransferFromDetail()"
+            style="display:none;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13">
+              <path d="M5 12h14M12 5l7 7-7 7" />
+            </svg>
+            Transferir
+          </button>
+          <button class="btn btn-secondary btn-sm" id="detail-reprint-transfer-btn"
+            onclick="reprintTransferFromDetail()" title="Reimprimir formato de transferencia">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13">
+              <path d="M17 1l4 4-4 4" />
+              <path d="M7 23l-4-4 4-4" />
+              <path d="M3 13h18" />
+              <path d="M3 7h18" />
+            </svg>
+            Reimprimir traslado
+          </button>
+          <button class="btn btn-secondary btn-sm" id="detail-edit-btn" onclick="editFromDetail()">Editar</button>
+          <button class="btn btn-ghost btn-icon" onclick="Modal.close('modal-detail')">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+          </button>
+        </div>
+      </div>
+      <div class="modal-body" style="padding:0;">
+        <div class="detail-top">
+          <div class="detail-icon" id="detail-icon">🔧</div>
+          <div style="flex:1;">
+            <div class="detail-code" id="detail-code"></div>
+            <div class="detail-name" id="detail-name"></div>
+            <div class="detail-type" id="detail-type"></div>
+            <div style="margin-top:8px;" id="detail-status-badge"></div>
+          </div>
+        </div>
+        <div class="detail-grid" id="detail-grid"></div>
+        <div id="detail-desc-wrap"
+          style="padding:12px 16px; background:var(--gray-pale); font-size:0.83rem; color:var(--gray-mid); display:none;">
+          <div
+            style="font-size:0.63rem; text-transform:uppercase; letter-spacing:1px; font-weight:700; margin-bottom:4px;">
+            Descripción</div>
+          <div id="detail-desc"></div>
+        </div>
+        <div
+          style="padding:16px 24px 4px; font-size:0.67rem; text-transform:uppercase; letter-spacing:1px; font-weight:700; color:var(--gray-mid);">
+          Historial de movimientos
+        </div>
+        <div class="timeline" id="detail-timeline">
+          <div class="page-loader">
+            <div class="spinner"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════
+       MODAL: QR
+  ═══════════════════════════════════════ -->
+  <div class="modal-overlay qr-modal" id="modal-qr">
+    <div class="modal" style="max-width:440px;">
+      <div class="modal-header">
+        <h3>Código QR — <span id="qr-tool-title"></span></h3>
+        <button class="btn btn-ghost btn-icon" onclick="Modal.close('modal-qr')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="qr-container">
+          <div class="qr-canvas-wrap">
+            <canvas id="qr-canvas"></canvas>
+          </div>
+          <div class="qr-tool-name" id="qr-name"></div>
+          <div class="qr-tool-code" id="qr-code-label"></div>
+        </div>
+        <table class="qr-data-table" id="qr-data-table"></table>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="Modal.close('modal-qr')">Cerrar</button>
+        <button class="btn btn-secondary" onclick="downloadQR()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <polyline points="7 10 12 15 17 10" />
+            <line x1="12" y1="15" x2="12" y2="3" />
+          </svg>
+          Descargar
+        </button>
+        <button class="btn btn-primary" onclick="printQR()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14">
+            <polyline points="6 9 6 2 18 2 18 9" />
+            <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+            <rect x="6" y="14" width="12" height="8" />
+          </svg>
+          Imprimir
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════════════════════
+       MODAL: TRANSFERIR HERRAMIENTA
+  ═══════════════════════════════════════ -->
+  <div class="modal-overlay transfer-modal" id="modal-transfer">
+    <div class="modal" style="max-width:480px;">
+      <div class="modal-header">
+        <h3>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"
+            style="vertical-align:middle;margin-right:6px;">
+            <rect x="1" y="3" width="15" height="13" rx="2" />
+            <path d="M16 8h4l3 3v5h-7V8z" />
+            <circle cx="5.5" cy="18.5" r="2.5" />
+            <circle cx="18.5" cy="18.5" r="2.5" />
+          </svg>
+          <span id="transfer-modal-title-text">Transferir Herramienta</span>
+        </h3>
+        <button class="btn btn-ghost btn-icon" onclick="Modal.close('modal-transfer')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+
+        <!-- Tool chip -->
+        <div class="transfer-tool-chip" id="transfer-tool-chip">
+          <div class="chip-icon" id="transfer-chip-icon">🔧</div>
+          <div>
+            <div class="chip-code" id="transfer-chip-code"></div>
+            <div class="chip-name" id="transfer-chip-name"></div>
+          </div>
+        </div>
+
+        <!-- Ruta origen → destino -->
+        <div class="transfer-route" id="transfer-route" data-role-section="transfer-only">
+          <div class="transfer-wh-box origin">
+            <div class="transfer-wh-label">Almacén Origen</div>
+            <div class="transfer-wh-name" id="transfer-origin-name">—</div>
+          </div>
+          <div class="transfer-arrow">→</div>
+          <div class="transfer-wh-box destination">
+            <div class="transfer-wh-label">Almacén Destino</div>
+            <div class="transfer-wh-name" id="transfer-dest-preview">Selecciona...</div>
+          </div>
+        </div>
+
+        <!-- Selector de destino -->
+        <div class="mt-4" id="transfer-dest-wrap">
+          <label class="field-label">Almacén destino *</label>
+          <select id="transfer-dest" class="field-input">
+            <option value="">Selecciona un almacén...</option>
+          </select>
+        </div>
+
+        <!-- SELECCIONAR ESTATUS DE HERRAMIENTA -->
+        <div class="mt-4">
+          <label class="field-label">Estatus Herramienta *</label>
+          <select id="transfer-status" class="field-input">
+            <option value="">Selecciona un estatus...</option>
+            <option value="ACTIVA">ACTIVA</option>
+            <option value="EN_MANTENIMIENTO">EN MANTENIMIENTO</option>
+            <option value="REPARACION">REPARACIÓN</option>
+            <option value="RESGUARDO">RESGUARDO</option>
+          </select>
+        </div>
+
+        <!-- Motivo (select rápido) -->
+        <div class="mt-4">
+          <label class="field-label" id="transfer-reason-label">Motivo de transferencia *</label>
+          <select id="transfer-reason" class="field-input" onchange="onTransferReasonChange()">
+            <option value="">Selecciona un motivo...</option>
+            <option value="Reubicación por necesidad de obra" data-role="transfer-only">Reubicación por necesidad de
+              obra</option>
+            <option value="Mantenimiento en otra sede" data-role="transfer-only">Mantenimiento en otra sede</option>
+            <option value="Devolución al almacén principal" data-role="transfer-only">Devolución al almacén principal
+            </option>
+            <option value="Préstamo a otro proyecto" data-role="transfer-only">Préstamo a otro proyecto</option>
+            <option value="Reorganización de inventario" data-role="transfer-only">Reorganización de inventario</option>
+            <option value="Cambio de estatus" data-role="status-only">Cambio de estatus</option>
+            <option value="Herramienta enviada a mantenimiento" data-role="status-only">Herramienta enviada a
+              mantenimiento</option>
+            <option value="Herramienta en reparación" data-role="status-only">Herramienta en reparación</option>
+            <option value="Herramienta en resguardo" data-role="status-only">Herramienta en resguardo</option>
+            <option value="Herramienta reactivada" data-role="status-only">Herramienta reactivada</option>
+            <option value="otro">Otro (especificar)...</option>
+          </select>
+        </div>
+
+        <!-- Notas adicionales -->
+        <div class="mt-4" id="transfer-notes-wrap">
+          <label class="field-label">Notas adicionales</label>
+          <textarea id="transfer-notes" class="field-input" rows="2"
+            placeholder="Observaciones sobre el traslado..."></textarea>
+        </div>
+
+        <!-- Motivo personalizado -->
+        <div class="mt-4" id="transfer-custom-wrap" style="display:none;">
+          <label class="field-label">Especifica el motivo *</label>
+          <input type="text" id="transfer-custom-reason" class="field-input"
+            placeholder="Describe el motivo del traslado..." />
+        </div>
+
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="Modal.close('modal-transfer')">Cancelar</button>
+        <button class="btn btn-primary" id="btn-transfer-save"
+          style="background:linear-gradient(135deg,#2980B9,#1a6fa0);">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="14" height="14">
+            <path d="M5 12h14M12 5l7 7-7 7" />
+          </svg>
+          <span id="btn-transfer-save-label">Confirmar Transferencia</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Hidden print area -->
+  <div id="qr-print-area" style="display:none;"></div>
+
+  <!-- Scripts -->
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../js/config.js"></script>
+  <script src="../js/auth.js"></script>
+  <script src="../js/utils.js"></script>
+  <script src="../pages_js/herramienta.js"></script>
+</body>
+
+</html>
