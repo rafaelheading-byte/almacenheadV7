@@ -25,6 +25,14 @@
           <select id="filter-category" class="field-input" style="width:160px;">
             <option value="">Todas las categorías</option>
           </select>
+          <button id="btn-print-products" class="btn btn-secondary" onclick="printAllProducts()" style="display:inline-flex; align-items:center; gap:6px;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:16px;height:16px;">
+              <polyline points="6 9 6 2 18 2 18 9"></polyline>
+              <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+              <rect x="6" y="14" width="12" height="8"></rect>
+            </svg>
+            Imprimir
+          </button>
           <!-- Botón solo para ADMIN y SUPERVISOR -->
           <button id="btn-new-product" class="btn btn-primary" onclick="openCreate()" style="display:none;">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
@@ -56,16 +64,18 @@
                   <th>Código</th>
                   <th>Nombre</th>
                   <th>Categoría</th>
+                  <th>Marca</th>
+                  <th>Modelo</th>
                   <th>Unidad</th>
-                  <th>Stock Mín.</th>
                   <th>Estado</th>
-                  <th>Creado</th>
+                  <th>ficha Técnica</th>
+                  <th>Imagen</th>
                   <th id="actions-col"></th>
                 </tr>
               </thead>
               <tbody id="products-body">
                 <tr>
-                  <td colspan="8">
+                  <td colspan="10">
                     <div class="page-loader">
                       <div class="spinner"></div>
                     </div>
@@ -109,23 +119,44 @@
           <label class="field-label">Nombre *</label>
           <input type="text" id="prod-name" class="field-input" placeholder="Nombre del producto" />
         </div>
+        <div class="form-row cols-2 mt-4">
+          <div>
+            <label class="field-label">Marca</label>
+            <input type="text" id="prod-brand" class="field-input" placeholder="Ej: DeWalt, Bosch..." />
+          </div>
+          <div>
+            <label class="field-label">Modelo</label>
+            <input type="text" id="prod-model" class="field-input" placeholder="Ej: DWE6423..." />
+          </div>
+        </div>
         <div class="mt-4">
           <label class="field-label">Descripción</label>
           <textarea id="prod-desc" class="field-input" placeholder="Descripción opcional..."></textarea>
         </div>
+        <div class="mt-4">
+          <label class="field-label">Unidad *</label>
+          <input type="text" id="prod-unit" class="field-input" placeholder="pza, kg, m, lt..." />
+          <input type="hidden" id="prod-minstock" value="0" />
+        </div>
         <div class="form-row cols-2 mt-4">
           <div>
-            <label class="field-label">Unidad *</label>
-            <input type="text" id="prod-unit" class="field-input" placeholder="pza, kg, m, lt..." />
+            <label class="field-label">Ficha Técnica (URL)</label>
+            <input type="text" id="prod-tech-sheet" class="field-input" placeholder="https://..." />
           </div>
           <div>
-            <label class="field-label">Stock Mínimo</label>
-            <input type="number" id="prod-minstock" class="field-input" min="0" value="0" />
+            <label class="field-label">Imagen de la herramienta</label>
+            <div style="display:flex; gap:8px; align-items:center; margin-top:4px;">
+              <input type="file" id="prod-image-file" accept="image/*" style="display:none;" />
+              <button type="button" class="btn btn-secondary btn-sm" onclick="document.getElementById('prod-image-file').click()" style="padding: 6px 12px; font-size: 0.8rem;">
+                Subir Imagen
+              </button>
+              <span id="file-name-text" class="text-muted" style="font-size:0.8rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:150px;">Sin archivo</span>
+            </div>
+            <div id="image-preview-container" style="display:none; margin-top:8px; position:relative; width:60px; height:60px; border:1px solid var(--gray-light); border-radius:4px; overflow:hidden; background: #fff;">
+              <img id="modal-image-preview" src="" style="width:100%; height:100%; object-fit:contain;" />
+              <button type="button" onclick="removeSelectedImage()" style="position:absolute; top:2px; right:2px; background:rgba(0,0,0,0.6); color:white; border:none; border-radius:50%; width:16px; height:16px; font-size:10px; cursor:pointer; display:flex; align-items:center; justify-content:center; padding:0;">×</button>
+            </div>
           </div>
-        </div>
-        <div class="mt-4">
-          <label class="field-label">URL Imagen</label>
-          <input type="text" id="prod-image" class="field-input" placeholder="https://..." />
         </div>
       </div>
       <div class="modal-footer">
@@ -147,6 +178,24 @@
       <div class="modal-footer">
         <button class="btn btn-secondary" onclick="Modal.close('modal-confirm')">Cancelar</button>
         <button class="btn btn-danger" id="btn-confirm-ok">Confirmar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Vista Previa de Imagen -->
+  <div class="modal-overlay" id="modal-image-preview-large">
+    <div class="modal" style="max-width:480px; text-align:center;">
+      <div class="modal-header">
+        <h3 id="preview-image-title">Vista Previa</h3>
+        <button class="btn btn-ghost btn-icon" onclick="Modal.close('modal-image-preview-large')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body" style="display:flex; justify-content:center; align-items:center; padding:16px; background:#fff;">
+        <img id="preview-image-element" src="" style="max-width:100%; max-height:400px; object-fit:contain; border-radius:4px;" />
       </div>
     </div>
   </div>
