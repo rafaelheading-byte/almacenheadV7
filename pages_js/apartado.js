@@ -28,7 +28,7 @@ function showAccessDenied() {
                     <div style="background:#fff;padding:40px;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.1);text-align:center;max-width:420px;">
                         <span style="font-size:4rem;display:block;margin-bottom:20px;">🚫</span>
                         <h2 style="margin:0 0 10px 0;font-size:1.5rem;color:#b52525;">Acceso Denegado</h2>
-                        <p style="margin:0 0 20px 0;color:#666;font-size:0.9rem;line-height:1.5;">No tienes permisos para acceder al submódulo de Apartados. Debes ser administrador o almacenista con acceso a empacadora.</p>
+                        <p style="margin:0 0 20px 0;color:#666;font-size:0.9rem;line-height:1.5;">No tienes permisos para acceder al submódulo de Apartados. Debes ser administrador, coordinador o almacenista con acceso a empacadora.</p>
                         <p style="margin:0;font-size:0.8rem;color:#999;">Redirigiendo a Inventario...</p>
                     </div>
                 </div>
