@@ -99,6 +99,8 @@ function fillWarehouseOptions() {
     const modalWh = document.getElementById("apartado-warehouse");
 
     if (filterWh) {
+        // Clear filter options to avoid duplicating on reload
+        filterWh.innerHTML = '<option value="">Todos los almacenes</option>';
         catalogWarehousesArray.forEach(w => {
             const opt = document.createElement("option");
             opt.value = w.id;
@@ -108,14 +110,29 @@ function fillWarehouseOptions() {
     }
 
     if (modalWh) {
-        modalWh.innerHTML = '<option value="">Selecciona origen...</option>';
-        catalogWarehousesArray.forEach(w => {
-            const opt = document.createElement("option");
-            opt.value = w.id;
-            opt.textContent = `${w.name} (${w.code})`;
-            modalWh.appendChild(opt);
-        });
+        fillModalWarehouseOptions("view");
     }
+}
+
+function fillModalWarehouseOptions(mode) {
+    const modalWh = document.getElementById("apartado-warehouse");
+    if (!modalWh) return;
+
+    modalWh.innerHTML = '<option value="">Selecciona origen...</option>';
+    
+    let list = catalogWarehousesArray;
+    if (mode === "create") {
+        list = catalogWarehousesArray.filter(w => 
+            w.name && w.name.toLowerCase().includes("empacadora")
+        );
+    }
+    
+    list.forEach(w => {
+        const opt = document.createElement("option");
+        opt.value = w.id;
+        opt.textContent = `${w.name} (${w.code})`;
+        modalWh.appendChild(opt);
+    });
 }
 
 // Triggered when Origin Warehouse changes in the Modal
@@ -443,8 +460,16 @@ function openCreateModal() {
     // Title
     document.getElementById("apartado-modal-title").textContent = "📦 Nuevo Apartado";
 
-    // Clear Form
-    document.getElementById("apartado-warehouse").value = "";
+    // Populate warehouse dropdown for create mode (only empacadora)
+    fillModalWarehouseOptions("create");
+
+    // Clear Form & auto-select warehouse if options are available
+    const modalWh = document.getElementById("apartado-warehouse");
+    if (modalWh && modalWh.options.length > 1) {
+        modalWh.selectedIndex = 1;
+    } else {
+        if (modalWh) modalWh.value = "";
+    }
     document.getElementById("apartado-destination").value = "";
     document.getElementById("apartado-notes").value = "";
     document.getElementById("product-search").value = "";
@@ -829,6 +854,7 @@ window.openDetailModal = async function (apartadoId) {
 
         // Populate Fields
         document.getElementById("apartado-notes").value = master.notes || "";
+        fillModalWarehouseOptions("edit");
         document.getElementById("apartado-warehouse").value = master.warehouse_id;
         document.getElementById("apartado-requisicion").value = master.requisicion || "";
         document.getElementById("apartado-pedido").value = master.pedido || "";
