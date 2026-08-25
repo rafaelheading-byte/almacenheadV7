@@ -64,12 +64,12 @@
                   <th>Código</th>
                   <th>Nombre</th>
                   <th>Categoría</th>
+                  <th>Marca</th>
+                  <th>Modelo</th>
                   <th>Unidad</th>
-                  <th>Stock Mín.</th>
                   <th>Estado</th>
                   <th>ficha Técnica</th>
                   <th>Imagen</th>
-                  <th>Creado</th>
                   <th id="actions-col"></th>
                 </tr>
               </thead>
@@ -119,19 +119,24 @@
           <label class="field-label">Nombre *</label>
           <input type="text" id="prod-name" class="field-input" placeholder="Nombre del producto" />
         </div>
+        <div class="form-row cols-2 mt-4">
+          <div>
+            <label class="field-label">Marca</label>
+            <input type="text" id="prod-brand" class="field-input" placeholder="Ej: DeWalt, Bosch..." />
+          </div>
+          <div>
+            <label class="field-label">Modelo</label>
+            <input type="text" id="prod-model" class="field-input" placeholder="Ej: DWE6423..." />
+          </div>
+        </div>
         <div class="mt-4">
           <label class="field-label">Descripción</label>
           <textarea id="prod-desc" class="field-input" placeholder="Descripción opcional..."></textarea>
         </div>
-        <div class="form-row cols-2 mt-4">
-          <div>
-            <label class="field-label">Unidad *</label>
-            <input type="text" id="prod-unit" class="field-input" placeholder="pza, kg, m, lt..." />
-          </div>
-          <div>
-            <label class="field-label">Stock Mínimo</label>
-            <input type="number" id="prod-minstock" class="field-input" min="0" value="0" />
-          </div>
+        <div class="mt-4">
+          <label class="field-label">Unidad *</label>
+          <input type="text" id="prod-unit" class="field-input" placeholder="pza, kg, m, lt..." />
+          <input type="hidden" id="prod-minstock" value="0" />
         </div>
         <div class="form-row cols-2 mt-4">
           <div>
