@@ -216,6 +216,7 @@ function renderSidebar(activeId) {
   const isAdmin = user.role === "ADMIN";
   const isSupervisor = user.role === "SUPERVISOR";
   const isAlmacenista = user.role === "ALMACENISTA";
+  const isCoordinador = user.role === "COORDINADOR";
   const hasEmpacadoraAccess = user.has_empacadora_access === true;
 
   // Asynchronous verification of packing plant access for Almacenista
@@ -258,7 +259,7 @@ function renderSidebar(activeId) {
     }
   }
 
-  const showApartados = isAdmin || (isAlmacenista && hasEmpacadoraAccess);
+  const showApartados = isAdmin || isCoordinador || (isAlmacenista && hasEmpacadoraAccess);
 
   const navItems = [
     ...(isAdmin ? [{ id: "nav-dashboard", href: `${pathPrefix}dashboard.html`, icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>`, label: "Dashboard" }] : []),
