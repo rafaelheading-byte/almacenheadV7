@@ -58,6 +58,8 @@ async function loadProducts() {
         is_active,
         created_at,
         category_id,
+        marca,
+        modelo,
         categories:category_id (
           id,
           name
@@ -102,8 +104,9 @@ function renderTable(data) {
           <td class="code-cell">${p.code}</td>
           <td class="fw-600">${p.name}</td>
           <td class="text-muted">${p.categories?.name || "—"}</td>
+          <td class="text-muted">${p.marca || "—"}</td>
+          <td class="text-muted">${p.modelo || "—"}</td>
           <td class="text-muted">${p.unit}</td>
-          <td class="text-mono">${p.minimum_stock}</td>
           <td>${p.is_active
                 ? '<span class="badge badge-normal">Activo</span>'
                 : '<span class="badge badge-out">Inactivo</span>'}</td>
@@ -119,7 +122,6 @@ function renderTable(data) {
               <img src="${p.image_url}" alt="${p.name}" style="width: 40px; height: 40px; object-fit: contain; border-radius: var(--radius); border: 1px solid var(--gray-light); cursor: pointer;" onclick="previewImage('${p.image_url.replace(/'/g, "\\'")}', '${p.name.replace(/'/g, "\\'")}')" />
             ` : '—'}
           </td>
-          <td class="text-muted">${fmt.date(p.created_at)}</td>
           ${actionsCell}
         </tr>
       `;
@@ -133,7 +135,11 @@ function applyFilters() {
     const q = document.getElementById("search-input").value.toLowerCase();
     const cat = document.getElementById("filter-category").value;
     const filtered = allData.filter(p => {
-        const mq = !q || p.name.toLowerCase().includes(q) || p.code.toLowerCase().includes(q);
+        const mq = !q || 
+                   p.name.toLowerCase().includes(q) || 
+                   p.code.toLowerCase().includes(q) ||
+                   (p.marca || '').toLowerCase().includes(q) ||
+                   (p.modelo || '').toLowerCase().includes(q);
         const mc = !cat || p.categories?.id === cat;
         return mq && mc;
     });
@@ -181,6 +187,8 @@ function openCreate() {
     document.getElementById("prod-id").value = "";
     document.getElementById("prod-code").value = "";
     document.getElementById("prod-name").value = "";
+    document.getElementById("prod-brand").value = "";
+    document.getElementById("prod-model").value = "";
     document.getElementById("prod-desc").value = "";
     document.getElementById("prod-unit").value = "";
     document.getElementById("prod-minstock").value = "0";
@@ -198,6 +206,8 @@ function openEdit(p) {
     document.getElementById("prod-id").value = p.id;
     document.getElementById("prod-code").value = p.code;
     document.getElementById("prod-name").value = p.name;
+    document.getElementById("prod-brand").value = p.marca || "";
+    document.getElementById("prod-model").value = p.modelo || "";
     document.getElementById("prod-desc").value = p.description || "";
     document.getElementById("prod-unit").value = p.unit;
     document.getElementById("prod-minstock").value = p.minimum_stock;
@@ -222,6 +232,8 @@ document.getElementById("btn-prod-save").addEventListener("click", async () => {
     const id = document.getElementById("prod-id").value;
     const code = document.getElementById("prod-code").value.trim();
     const name = document.getElementById("prod-name").value.trim();
+    const brand = document.getElementById("prod-brand").value.trim() || null;
+    const model = document.getElementById("prod-model").value.trim() || null;
     const unit = document.getElementById("prod-unit").value.trim();
     const minstock = parseInt(document.getElementById("prod-minstock").value) || 0;
     const catId = document.getElementById("prod-category").value || null;
@@ -241,7 +253,9 @@ document.getElementById("btn-prod-save").addEventListener("click", async () => {
         minimum_stock: minstock,
         category_id: catId,
         image_url: imageUrl,
-        technical_sheet_url: techSheet
+        technical_sheet_url: techSheet,
+        marca: brand,
+        modelo: model
     };
     const btn = document.getElementById("btn-prod-save");
     btn.disabled = true; btn.textContent = "Guardando...";
@@ -282,7 +296,11 @@ function printAllProducts() {
     const q = document.getElementById("search-input").value.toLowerCase();
     const cat = document.getElementById("filter-category").value;
     const filtered = allData.filter(p => {
-        const mq = !q || p.name.toLowerCase().includes(q) || p.code.toLowerCase().includes(q);
+        const mq = !q || 
+                   p.name.toLowerCase().includes(q) || 
+                   p.code.toLowerCase().includes(q) ||
+                   (p.marca || '').toLowerCase().includes(q) ||
+                   (p.modelo || '').toLowerCase().includes(q);
         const mc = !cat || p.categories?.id === cat;
         return mq && mc;
     });
@@ -334,6 +352,8 @@ function printAllProducts() {
                 <td class="code-cell">${p.code}</td>
                 <td class="name-cell">${p.name}</td>
                 <td>${categoryName}</td>
+                <td>${p.marca || '—'}</td>
+                <td>${p.modelo || '—'}</td>
                 <td>${p.unit}</td>
                 <td class="img-cell" style="text-align: center;">${imgHtml}</td>
             </tr>
@@ -363,10 +383,12 @@ function printAllProducts() {
                 <thead>
                     <tr>
                         <th style="width: 10%;">Código</th>
-                        <th style="width: 50%;">Nombre</th>
-                        <th style="width: 15%;">Categoría</th>
-                        <th style="width: 10%;">Unidad</th>
-                        <th style="width: 15%; text-align: center;">Imagen</th>
+                        <th style="width: 30%;">Nombre</th>
+                        <th style="width: 13%;">Categoría</th>
+                        <th style="width: 13%;">Marca</th>
+                        <th style="width: 13%;">Modelo</th>
+                        <th style="width: 8%;">Unidad</th>
+                        <th style="width: 13%; text-align: center;">Imagen</th>
                     </tr>
                 </thead>
                 <tbody>
