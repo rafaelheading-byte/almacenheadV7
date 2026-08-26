@@ -15,6 +15,11 @@
     color: #c0620a;
 }
 
+.status-verificando {
+    background: rgba(52, 152, 219, 0.12);
+    color: #2980b9;
+}
+
 .status-completado {
     background: rgba(39, 174, 96, 0.12);
     color: #1a8a4a;
