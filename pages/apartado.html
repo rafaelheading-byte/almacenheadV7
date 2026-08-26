@@ -32,7 +32,8 @@
                     <select id="filter-status" class="field-input" style="width:140px;">
                         <option value="">Todos los estados</option>
                         <option value="PENDIENTE">Pendientes</option>
-                        <option value="COMPLETADO">Completados</option>
+                        <option value="VERIFICANDO">Verificando</option>
+                        <option value="COMPLETADO">Completos</option>
                         <option value="CANCELADO">Cancelados</option>
                     </select>
                     <select id="filter-warehouse" class="field-input" style="width:180px;">
@@ -129,7 +130,14 @@
                 <div class="detail-row" id="status-row" style="display:none;">
                     <div class="detail-field">
                         <label>Estado</label>
-                        <div id="apartado-status-badge-container"></div>
+                        <div style="display:flex; align-items:center; gap:10px;">
+                            <div id="apartado-status-badge-container"></div>
+                            <select id="apartado-status-select" class="field-input" style="width:140px; padding:4px 8px; height:auto; font-size:0.8rem; display:none;" onchange="changeApartadoStatus(this.value)">
+                                <option value="PENDIENTE">Pendiente</option>
+                                <option value="VERIFICANDO">Verificando</option>
+                                <option value="COMPLETADO">Completo</option>
+                            </select>
+                        </div>
                     </div>
                     <div class="detail-field" id="exit-folio-container" style="display:none;">
                         <label>Folio Salida Generado</label>
