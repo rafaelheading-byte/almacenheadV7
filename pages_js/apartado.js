@@ -208,14 +208,14 @@ async function updateStockInfo() {
         const stock = data.stock || 0;
         currentSelectedProductStock = stock;
 
-        // Query reserved quantity in PENDIENTE status for this warehouse and product (excluding current apartado)
+        // Query reserved quantity in PENDIENTE and VERIFICANDO status for this warehouse and product (excluding current apartado)
         let reservedQty = 0;
         try {
             let queryAp = db
                 .from("apartados")
                 .select("id")
                 .eq("warehouse_id", warehouseId)
-                .eq("status", "PENDIENTE");
+                .in("status", ["PENDIENTE", "VERIFICANDO"]);
 
             if (currentApartadoId) {
                 queryAp = queryAp.neq("id", currentApartadoId);
@@ -436,9 +436,12 @@ async function loadApartados(page = 1) {
         if (r.status === "PENDIENTE") {
             badgeClass = "status-pendiente";
             statusLabel = "Pendiente";
+        } else if (r.status === "VERIFICANDO") {
+            badgeClass = "status-verificando";
+            statusLabel = "Verificando";
         } else if (r.status === "COMPLETADO") {
             badgeClass = "status-completado";
-            statusLabel = "Validado";
+            statusLabel = "Completo";
         } else if (r.status === "CANCELADO") {
             badgeClass = "status-cancelado";
             statusLabel = "Cancelado";
@@ -914,14 +917,28 @@ window.openDetailModal = async function (apartadoId) {
         if (master.status === "PENDIENTE") {
             badgeClass = "status-pendiente";
             statusLabel = "Pendiente";
+        } else if (master.status === "VERIFICANDO") {
+            badgeClass = "status-verificando";
+            statusLabel = "Verificando";
         } else if (master.status === "COMPLETADO") {
             badgeClass = "status-completado";
-            statusLabel = "Validado";
+            statusLabel = "Completo";
         } else if (master.status === "CANCELADO") {
             badgeClass = "status-cancelado";
             statusLabel = "Cancelado";
         }
         badgeContainer.innerHTML = `<span class="status-badge ${badgeClass}">${statusLabel}</span>`;
+
+        // Configure status selector visibility
+        const statusSelect = document.getElementById("apartado-status-select");
+        if (statusSelect) {
+            statusSelect.value = master.status;
+            if (master.status === "PENDIENTE" || master.status === "VERIFICANDO") {
+                statusSelect.style.display = "inline-block";
+            } else {
+                statusSelect.style.display = "none";
+            }
+        }
 
         if (master.status === "COMPLETADO") {
             document.getElementById("exit-folio-container").style.display = "flex";
@@ -933,7 +950,7 @@ window.openDetailModal = async function (apartadoId) {
         // Modal Mode Configuration
         const container = document.getElementById("apartado-form-container");
 
-        if (master.status === "PENDIENTE") {
+        if (master.status === "PENDIENTE" || master.status === "VERIFICANDO") {
             currentModalMode = "edit";
 
             // Enable fields
@@ -1030,6 +1047,85 @@ window.cancelApartado = async function () {
         Toast.show("Error al cancelar: " + err.message, "error");
     } finally {
         btn.disabled = false;
+    }
+};
+
+// Change Apartado Status manually
+window.changeApartadoStatus = async function (newStatus) {
+    if (!currentApartadoId) return;
+
+    // If changing to COMPLETADO, trigger validation and exit generation flow
+    if (newStatus === "COMPLETADO") {
+        try {
+            const { data: currentAp, error } = await db
+                .from("apartados")
+                .select("status")
+                .eq("id", currentApartadoId)
+                .single();
+
+            if (!error && currentAp) {
+                // Reset select dropdown value to current status in case validation is cancelled or fails
+                document.getElementById("apartado-status-select").value = currentAp.status;
+            }
+        } catch (err) {
+            console.error("Error retrieving current status:", err);
+        }
+
+        // Trigger exit generation
+        validateAndGenerateExit();
+        return;
+    }
+
+    const statusLabel = newStatus === "VERIFICANDO" ? "Verificando" : "Pendiente";
+    if (!confirm(`¿Estás seguro de cambiar el estado del apartado a "${statusLabel}"?`)) {
+        try {
+            const { data: currentAp, error } = await db
+                .from("apartados")
+                .select("status")
+                .eq("id", currentApartadoId)
+                .single();
+
+            if (!error && currentAp) {
+                document.getElementById("apartado-status-select").value = currentAp.status;
+            }
+        } catch (err) {
+            console.error("Error resetting status dropdown:", err);
+        }
+        return;
+    }
+
+    try {
+        const { error } = await db
+            .from("apartados")
+            .update({
+                status: newStatus,
+                updated_at: new Date().toISOString()
+            })
+            .eq("id", currentApartadoId);
+
+        if (error) throw error;
+
+        Toast.show("Estado actualizado correctamente", "success");
+        openDetailModal(currentApartadoId);
+        loadApartados();
+    } catch (err) {
+        console.error("Error al cambiar estado:", err);
+        Toast.show("Error al cambiar estado: " + err.message, "error");
+        
+        // Reset dropdown
+        try {
+            const { data: currentAp, error: fetchErr } = await db
+                .from("apartados")
+                .select("status")
+                .eq("id", currentApartadoId)
+                .single();
+
+            if (!fetchErr && currentAp) {
+                document.getElementById("apartado-status-select").value = currentAp.status;
+            }
+        } catch (err2) {
+            console.error("Error resetting status dropdown:", err2);
+        }
     }
 };
 
@@ -1277,9 +1373,30 @@ window.printApartadoPDF = async function () {
             quantity: it.quantity
         }));
 
-        // Generate Apartado PDF
-        generateApartadoPDF(warehouseName, destinationName, master.notes, pdfItems, creatorName, master.folio, master.status, master.created_at, master.exit_folio, master.requisicion, master.pedido);
+        // Generate Apartado PDF (If it was PENDIENTE, the printout will show VERIFICANDO)
+        let printedStatus = master.status;
+        if (master.status === "PENDIENTE") {
+            printedStatus = "VERIFICANDO";
+        }
+
+        generateApartadoPDF(warehouseName, destinationName, master.notes, pdfItems, creatorName, master.folio, printedStatus, master.created_at, master.exit_folio, master.requisicion, master.pedido);
         Toast.show("PDF de apartado generado correctamente", "success");
+
+        // Automatically change status to VERIFICANDO if it was PENDIENTE
+        if (master.status === "PENDIENTE") {
+            const { error: updateError } = await db
+                .from("apartados")
+                .update({
+                    status: "VERIFICANDO",
+                    updated_at: new Date().toISOString()
+                })
+                .eq("id", currentApartadoId);
+
+            if (!updateError) {
+                loadApartados();
+                openDetailModal(currentApartadoId);
+            }
+        }
 
     } catch (err) {
         console.error("Error al generar PDF de apartado:", err);
