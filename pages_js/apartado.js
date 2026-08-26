@@ -50,6 +50,7 @@ let selectedItems = []; // Array of { productId, code, name, unit, quantity }
 let selectedProduct = null;
 let modalStocks = {}; // { productId: stockValue }
 let currentSelectedProductStock = 0; // to keep track of the selected product's stock
+let currentSelectedProductReserved = 0; // to keep track of the selected product's reserved stock
 
 // Initialize Page
 window.addEventListener("DOMContentLoaded", async () => {
@@ -180,6 +181,7 @@ async function updateStockInfo() {
     if (!selectedProduct || !warehouseId) {
         if (stockInfo) stockInfo.style.display = "none";
         currentSelectedProductStock = 0;
+        currentSelectedProductReserved = 0;
         return;
     }
 
@@ -193,6 +195,7 @@ async function updateStockInfo() {
 
         if (error || !data) {
             currentSelectedProductStock = 0;
+            currentSelectedProductReserved = 0;
             stockInfo.style.display = "block";
             stockInfo.style.background = "#fff3cd";
             stockInfo.style.color = "#856404";
@@ -204,23 +207,57 @@ async function updateStockInfo() {
 
         const stock = data.stock || 0;
         currentSelectedProductStock = stock;
+
+        // Query reserved quantity in PENDIENTE status for this warehouse and product (excluding current apartado)
+        let reservedQty = 0;
+        try {
+            let queryAp = db
+                .from("apartados")
+                .select("id")
+                .eq("warehouse_id", warehouseId)
+                .eq("status", "PENDIENTE");
+
+            if (currentApartadoId) {
+                queryAp = queryAp.neq("id", currentApartadoId);
+            }
+
+            const { data: pendingApartados, error: apError } = await queryAp;
+
+            if (!apError && pendingApartados && pendingApartados.length > 0) {
+                const apIds = pendingApartados.map(a => a.id);
+                const { data: items, error: itemsError } = await db
+                    .from("apartado_items")
+                    .select("quantity")
+                    .eq("product_id", selectedProduct.id)
+                    .in("apartado_id", apIds);
+
+                if (!itemsError && items) {
+                    reservedQty = items.reduce((sum, item) => sum + parseFloat(item.quantity || 0), 0);
+                }
+            }
+        } catch (err) {
+            console.error("Error consultando apartados pendientes:", err);
+        }
+        currentSelectedProductReserved = reservedQty;
+
+        const freeStock = stock - reservedQty;
         stockInfo.style.display = "block";
 
-        if (stock === 0) {
+        if (freeStock <= 0) {
             stockInfo.style.background = "rgba(224,53,53,.12)";
             stockInfo.style.color = "#b52525";
             stockInfo.style.border = "1px solid rgba(224,53,53,.3)";
-            stockInfo.textContent = "🚫 Stock actual: 0 — Sin disponibilidad";
-        } else if (stock <= 5) {
+            stockInfo.textContent = `🚫 Stock físico: ${stock} | Apartado: ${reservedQty} | Disp. libre: ${freeStock}`;
+        } else if (freeStock <= 5) {
             stockInfo.style.background = "rgba(230,126,34,.12)";
             stockInfo.style.color = "#c0620a";
             stockInfo.style.border = "1px solid rgba(230,126,34,.3)";
-            stockInfo.textContent = `⚠ Stock actual: ${stock} (stock bajo)`;
+            stockInfo.textContent = `⚠ Stock físico: ${stock} | Apartado: ${reservedQty} | Disp. libre: ${freeStock} (bajo)`;
         } else {
             stockInfo.style.background = "rgba(39,174,96,.12)";
             stockInfo.style.color = "#1a8a4a";
             stockInfo.style.border = "1px solid rgba(39,174,96,.3)";
-            stockInfo.textContent = `✓ Stock actual: ${stock} — Disponible`;
+            stockInfo.textContent = `✓ Stock físico: ${stock} | Apartado: ${reservedQty} | Disp. libre: ${freeStock}`;
         }
 
         checkCurrentQtyWarning();
@@ -229,7 +266,7 @@ async function updateStockInfo() {
     }
 }
 
-// Verifica si la cantidad a agregar excede el stock actual
+// Verifica si la cantidad a agregar excede el stock libre actual
 function checkCurrentQtyWarning() {
     const qtyInput = document.getElementById("product-qty");
     const stockInfo = document.getElementById("apartado-stock-info");
@@ -249,17 +286,19 @@ function checkCurrentQtyWarning() {
         text = text.split(" | ⚠️")[0];
     }
 
-    if (qty > currentSelectedProductStock) {
+    const freeStock = currentSelectedProductStock - currentSelectedProductReserved;
+
+    if (qty > freeStock) {
         stockInfo.style.background = "rgba(224,53,53,.12)";
         stockInfo.style.color = "#b52525";
         stockInfo.style.border = "1px solid rgba(224,53,53,.3)";
-        stockInfo.textContent = `${text} | ⚠️ Excede existencia (Faltan: ${(qty - currentSelectedProductStock).toFixed(2)})`;
+        stockInfo.textContent = `${text} | ⚠️ Excede disp. libre (Faltan: ${(qty - freeStock).toFixed(2)})`;
     } else {
-        if (currentSelectedProductStock === 0) {
+        if (freeStock <= 0) {
             stockInfo.style.background = "rgba(224,53,53,.12)";
             stockInfo.style.color = "#b52525";
             stockInfo.style.border = "1px solid rgba(224,53,53,.3)";
-        } else if (currentSelectedProductStock <= 5) {
+        } else if (freeStock <= 5) {
             stockInfo.style.background = "rgba(230,126,34,.12)";
             stockInfo.style.color = "#c0620a";
             stockInfo.style.border = "1px solid rgba(230,126,34,.3)";
