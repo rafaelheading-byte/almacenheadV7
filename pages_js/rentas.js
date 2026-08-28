@@ -161,7 +161,7 @@ function ordenarAlmacenes() {
 // Get sorting score for a warehouse based on active or urgent rents
 function getWarehouseSortScore(w) {
     const wRents = rentsList.filter(r => r.warehouse_id === w.id);
-    const activeRents = wRents.filter(r => r.estado === "ACTIVA" || r.estado === "VENCIDA");
+    const activeRents = wRents.filter(r => r.estado === "ACTIVA" || r.estado === "VENCIDA" || r.estado === "PROXIMO A PAGO");
 
     if (activeRents.length > 0) {
         // Find minimum days remaining among active/vencida rents
@@ -287,6 +287,8 @@ function renderAccordion() {
     container.innerHTML = warehousesList.map(w => {
         const wRents = rentsList.filter(r => r.warehouse_id === w.id);
         const activeCount = wRents.filter(r => r.estado === "ACTIVA").length;
+        const proximoCount = wRents.filter(r => r.estado === "PROXIMO A PAGO").length;
+        const vencidaCount = wRents.filter(r => r.estado === "VENCIDA").length;
 
         // Rents rows or empty state
         let rentsTableHTML = "";
@@ -304,6 +306,7 @@ function renderAccordion() {
                         <thead>
                             <tr>
                                 <th>Cliente</th>
+                                <th style="width:140px;">Orden de Compra</th>
                                 <th>Descripción / Elementos</th>
                                 <th style="width:110px;">Inicio</th>
                                 <th style="width:110px;">Fin</th>
@@ -359,6 +362,7 @@ function renderAccordion() {
                 return `
                                     <tr>
                                         <td style="font-weight:600; white-space:nowrap; vertical-align:middle;">${r.cliente}</td>
+                                        <td style="font-weight:600; white-space:nowrap; vertical-align:middle; color:var(--gray-dark);">${r.orden_compra || "—"}</td>
                                         <td style="font-size:0.82rem; color:var(--gray-dark); max-width: 280px; white-space: normal; word-break: break-word; vertical-align:middle;">
                                             ${r.descripcion || "—"}
                                         </td>
@@ -379,9 +383,19 @@ function renderAccordion() {
             `;
         }
 
-        const activeBadge = activeCount > 0
-            ? `<span class="badge badge-normal" style="font-size: 0.65rem; padding: 2px 8px;">${activeCount} activa(s)</span>`
-            : `<span class="badge badge-storekeeper" style="font-size: 0.65rem; padding: 2px 8px; color: var(--gray-light);">Sin rentas activas</span>`;
+        let badgesHTML = "";
+        if (vencidaCount > 0) {
+            badgesHTML += `<span class="badge badge-vencida" style="font-size: 0.65rem; padding: 2px 8px; margin-right: 6px;">${vencidaCount} vencida(s)</span>`;
+        }
+        if (proximoCount > 0) {
+            badgesHTML += `<span class="badge badge-proximo-a-pago" style="font-size: 0.65rem; padding: 2px 8px; margin-right: 6px;">${proximoCount} próximo(s) de pago</span>`;
+        }
+        if (activeCount > 0) {
+            badgesHTML += `<span class="badge badge-activa" style="font-size: 0.65rem; padding: 2px 8px; margin-right: 6px;">${activeCount} activa(s)</span>`;
+        }
+        if (vencidaCount === 0 && proximoCount === 0 && activeCount === 0) {
+            badgesHTML = `<span class="badge badge-storekeeper" style="font-size: 0.65rem; padding: 2px 8px; color: var(--gray-light);">Sin rentas activas</span>`;
+        }
 
         return `
             <div class="table-card" id="card-${w.id}">
@@ -393,7 +407,7 @@ function renderAccordion() {
                         </div>
                     </div>
                     <div style="display:flex; align-items:center; gap:12px;">
-                        ${activeBadge}
+                        ${badgesHTML}
                         <span class="rents-summary-badge">${wRents.length} total</span>
                         <svg class="accordion-toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                             <polyline points="6 9 12 15 18 9" />
@@ -441,6 +455,7 @@ function openCreate() {
     document.getElementById("rent-warehouse").value = "";
     document.getElementById("rent-warehouse").disabled = false;
     document.getElementById("rent-cliente").value = "";
+    document.getElementById("rent-orden-compra").value = "";
     document.getElementById("rent-descripcion").value = "";
 
     const hoyStr = new Date().toISOString().split('T')[0];
@@ -465,6 +480,7 @@ function openEdit(rent) {
     document.getElementById("rent-warehouse").value = rent.warehouse_id;
     document.getElementById("rent-warehouse").disabled = true;
     document.getElementById("rent-cliente").value = rent.cliente;
+    document.getElementById("rent-orden-compra").value = rent.orden_compra || "";
     document.getElementById("rent-descripcion").value = rent.descripcion || "";
     document.getElementById("rent-fecha-inicio").value = rent.fecha_inicio;
     document.getElementById("rent-fecha-fin").value = rent.fecha_fin || "";
@@ -482,6 +498,7 @@ document.getElementById("btn-rent-save").addEventListener("click", async () => {
     const id = document.getElementById("rent-id").value;
     const warehouse_id = document.getElementById("rent-warehouse").value;
     const cliente = document.getElementById("rent-cliente").value.trim();
+    const orden_compra = document.getElementById("rent-orden-compra").value.trim();
     const descripcion = document.getElementById("rent-descripcion").value.trim();
     const fecha_inicio = document.getElementById("rent-fecha-inicio").value;
     const fecha_fin = document.getElementById("rent-fecha-fin").value || null;
@@ -516,6 +533,7 @@ document.getElementById("btn-rent-save").addEventListener("click", async () => {
     const payload = {
         warehouse_id,
         cliente,
+        orden_compra,
         descripcion,
         fecha_inicio,
         fecha_fin,
@@ -552,3 +570,78 @@ document.getElementById("btn-rent-save").addEventListener("click", async () => {
         btn.textContent = "Guardar";
     }
 });
+
+// =========================================================
+// EXPORTAR RENTAS A EXCEL
+// =========================================================
+window.exportRentsExcel = function () {
+    if (!rentsList || rentsList.length === 0) {
+        Toast.show("No hay rentas para exportar", "info");
+        return;
+    }
+
+    const btnExport = document.getElementById("btn-export-excel");
+    const origHTML = btnExport.innerHTML;
+    btnExport.disabled = true;
+    btnExport.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px;animation:spin 1s linear infinite"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg> Exportando...`;
+
+    try {
+        // Build rows
+        const rows = rentsList.map(r => {
+            const wh = warehousesList.find(w => w.id === r.warehouse_id);
+            return {
+                "Almacén": wh ? `${wh.name} (${wh.code})` : "—",
+                "Cliente": r.cliente || "",
+                "Orden de Compra": r.orden_compra || "",
+                "Descripción / Elementos": r.descripcion || "",
+                "Fecha Inicio": r.fecha_inicio ? fmt.date(r.fecha_inicio) : "",
+                "Fecha Fin": r.fecha_fin ? fmt.date(r.fecha_fin) : "Indefinida",
+                "Próximo Pago": r.fecha_pago ? fmt.date(r.fecha_pago) : "",
+                "Monto": r.monto || 0,
+                "Estado": r.estado || "",
+                "Fecha Registro": r.created_at ? new Date(r.created_at).toLocaleString("es-MX") : "",
+            };
+        });
+
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.json_to_sheet(rows);
+
+        // Columns width
+        ws["!cols"] = [
+            { wch: 25 }, // Almacén
+            { wch: 25 }, // Cliente
+            { wch: 18 }, // Orden de Compra
+            { wch: 35 }, // Descripción
+            { wch: 13 }, // Fecha Inicio
+            { wch: 13 }, // Fecha Fin
+            { wch: 15 }, // Próximo Pago
+            { wch: 12 }, // Monto
+            { wch: 15 }, // Estado
+            { wch: 22 }, // Fecha Registro
+        ];
+
+        XLSX.utils.book_append_sheet(wb, ws, "RENTAS");
+
+        // Metadata sheet
+        const metaRows = [
+            ["HEAD STORE — Exportación de Rentas"],
+            [""],
+            ["Fecha de exportación:", new Date().toLocaleString("es-MX")],
+            ["Exportado por:", user?.full_name || user?.email || "—"],
+            ["Total de registros:", rentsList.length],
+        ];
+        const wsMeta = XLSX.utils.aoa_to_sheet(metaRows);
+        wsMeta["!cols"] = [{ wch: 28 }, { wch: 36 }];
+        XLSX.utils.book_append_sheet(wb, wsMeta, "INFO");
+
+        const dateStr = new Date().toISOString().slice(0, 10);
+        XLSX.writeFile(wb, `rentas_headstore_${dateStr}.xlsx`);
+        Toast.show(`Rentas exportadas: ${rentsList.length} registros`, "success");
+    } catch (err) {
+        console.error("Error exportando rentas:", err);
+        Toast.show("Error al exportar: " + err.message, "error");
+    } finally {
+        btnExport.disabled = false;
+        btnExport.innerHTML = origHTML;
+    }
+};
