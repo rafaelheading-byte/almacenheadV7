@@ -214,6 +214,7 @@ function renderSidebar(activeId) {
   }
 
   const isAdmin = user.role === "ADMIN";
+  const isRafa = user.id === "4588f3b0-737c-4ce3-b1f1-b9dbe381c8b1";
   const isSupervisor = user.role === "SUPERVISOR";
   const isAlmacenista = user.role === "ALMACENISTA";
   const isCoordinador = user.role === "COORDINADOR";
@@ -268,10 +269,14 @@ function renderSidebar(activeId) {
     { id: "nav-movements", href: `${pathPrefix}movements.html`, icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>`, label: "Movimientos" },
     { id: "nav-products", href: `${pathPrefix}products.html`, icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>`, label: "Productos" },
     ...(isAdmin ? [{ id: "nav-warehouses", href: `${pathPrefix}warehouses.html`, icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>`, label: "Almacenes" }] : []),
-    ...(isAdmin ? [{ id: "nav-suppliers", href: `${pathPrefix}suppliers.html`, icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>`, label: "Proveedores" }] : []),
-    ...(isAdmin ? [{ id: "nav-projects", href: `${pathPrefix}projects.html`, icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>`, label: "Procesos" }] : []),
+    ...(isRafa ? [{ id: "nav-suppliers", href: `${pathPrefix}suppliers.html`, icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>`, label: "Proveedores" }] : []),
+    ...(isRafa ? [{ id: "nav-projects", href: `${pathPrefix}projects.html`, icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>`, label: "Procesos" }] : []),
     { id: "nav-herramientas", href: `${pathPrefix}herramientas.html`, icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>`, label: "Herramientas" },
-    ...(isAdmin ? [{ id: "nav-users", href: `${pathPrefix}users.html`, icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`, label: "Usuarios" }] : []),
+    ...(isRafa ? [{ id: "nav-users", href: `${pathPrefix}users.html`, icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>`, label: "Usuarios" }] : []),
+    ...(isRafa ? [{ id: "nav-rentas", href: `${pathPrefix}rentas.html`, icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>`, label: "Rentas" }] : []),
+    ...(isRafa ? [{ id: "nav-compras", href: `${pathPrefix}compras.html`, icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>`, label: "Compras" }] : []),
+    ...(isRafa ? [{ id: "nav-ruta", href: `${pathPrefix}rutas.html`, icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>`, label: "Rutas" }] : []),
+    ...(isRafa ? [{ id: "nav-codigos", href: `${pathPrefix}codigos.html`, icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>`, label: "Codigos" }] : [])
   ];
 
   const navHTML = navItems.map(item => `
