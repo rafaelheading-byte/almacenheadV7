@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HEAD STORE — Rentas</title>
+  <link rel="stylesheet" href="../css/styles.css" />
+  <link rel="stylesheet" href="../css/apartado.css" />
+  <style>
+    /* Estilos personalizados y animaciones premium para el módulo de Rentas */
+    .accordion-header {
+      padding: 18px 22px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+      background: var(--white);
+      user-select: none;
+      transition: background var(--transition);
+    }
+    
+    .accordion-header:hover {
+      background: rgba(245, 196, 0, 0.03);
+    }
+    
+    .accordion-toggle-icon {
+      transition: transform 250ms cubic-bezier(0.4, 0, 0.2, 1);
+      width: 20px;
+      height: 20px;
+      color: var(--gray-mid);
+    }
+    
+    .table-card.expanded .accordion-toggle-icon {
+      transform: rotate(180deg);
+    }
+    
+    .accordion-content {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 300ms ease-out, border-top var(--transition);
+      background: #fdfdfd;
+      border-top: 1px solid transparent;
+    }
+    
+    .table-card.expanded .accordion-content {
+      max-height: 2000px; /* Suficiente para tablas con registros */
+      border-top: 1px solid #efefef;
+    }
+
+    .accordion-info {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .accordion-title-container {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .accordion-title {
+      font-family: var(--font-mono);
+      font-weight: 700;
+      font-size: 1rem;
+      margin-bottom: 4px;
+      color: var(--black);
+    }
+
+    .accordion-subtitle {
+      font-size: 0.78rem;
+      color: var(--gray-mid);
+    }
+
+    .rents-summary-badge {
+      background: var(--gray-pale);
+      color: var(--black);
+      border: 1px solid var(--gray-light);
+      padding: 2px 10px;
+      border-radius: 99px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      font-family: var(--font-mono);
+    }
+    
+    /* Badges de estado específicos de rentas */
+    .badge-activa {
+      background: rgba(39, 174, 96, 0.12);
+      color: #1a8a4a;
+    }
+    
+    .badge-finalizada {
+      background: rgba(127, 140, 141, 0.15);
+      color: #5d6d7e;
+    }
+    
+    .badge-vencida {
+      background: rgba(230, 126, 34, 0.14);
+      color: #c0620a;
+    }
+    
+    .badge-proximo-a-pago {
+      background: rgba(241, 196, 15, 0.15); /* Amarillo translúcido */
+      color: #b7950b; /* Amarillo/Dorado oscuro */
+    }
+    
+    .badge-cancelada {
+      background: rgba(224, 53, 53, 0.12);
+      color: #b52525;
+    }
+    
+    /* Hover en filas de rentas */
+    .rents-table tbody tr:hover {
+      background: rgba(245, 196, 0, 0.05) !important;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="app-layout">
+    <aside class="sidebar"></aside>
+    <div class="main-content">
+      <div class="topbar">
+        <button id="menu-toggle" class="menu-toggle btn-ghost btn-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 6h18M3 12h18M3 18h18" />
+          </svg>
+        </button>
+        <span class="topbar-title">// RENTAS POR ALMACÉN</span>
+        <div class="topbar-actions">
+          <button id="btn-new-rent" class="btn btn-primary" onclick="openCreate()" style="display:none;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:14px; height:14px;">
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+            Nueva Renta
+          </button>
+        </div>
+      </div>
+      <div class="page-content">
+        <div id="warehouses-accordion-container" style="display:flex; flex-direction:column; gap:16px;">
+          <div style="display: flex; justify-content: center; padding: 40px 0;">
+            <div class="spinner"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Crear/Editar Renta -->
+  <div class="modal-overlay" id="modal-renta">
+    <div class="modal" style="max-width: 600px;">
+      <div class="modal-header">
+        <h3 id="modal-title">Nueva Renta</h3>
+        <button class="btn btn-ghost btn-icon" onclick="Modal.close('modal-renta')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width: 18px; height: 18px;">
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="rent-id" />
+        
+        <div class="form-row cols-2">
+          <div>
+            <label class="field-label">Almacén *</label>
+            <select id="rent-warehouse" class="field-input">
+              <option value="">Seleccione un almacén...</option>
+            </select>
+          </div>
+          <div>
+            <label class="field-label">Cliente *</label>
+            <input type="text" id="rent-cliente" class="field-input" placeholder="Nombre de la empresa o cliente" />
+          </div>
+        </div>
+
+        <div class="mt-4">
+          <label class="field-label">Descripción / Elementos Rentados *</label>
+          <textarea id="rent-descripcion" class="field-input" style="height: 100px; resize: vertical;" placeholder="Listado de herramientas, maquinaria o notas de la renta..."></textarea>
+        </div>
+
+        <div class="form-row cols-2 mt-4">
+          <div>
+            <label class="field-label">Fecha Inicio *</label>
+            <input type="date" id="rent-fecha-inicio" class="field-input" />
+          </div>
+          <div>
+            <label class="field-label">Fecha Fin (Opcional)</label>
+            <input type="date" id="rent-fecha-fin" class="field-input" />
+          </div>
+        </div>
+
+        <div class="form-row cols-2 mt-4">
+          <div>
+            <label class="field-label">Fecha Próximo Pago *</label>
+            <input type="date" id="rent-fecha-pago" class="field-input" />
+          </div>
+          <div>
+            <label class="field-label">Monto Renta *</label>
+            <input type="number" id="rent-monto" class="field-input" min="0" step="0.01" placeholder="0.00" />
+          </div>
+        </div>
+
+        <div class="mt-4">
+          <label class="field-label">Estado *</label>
+          <select id="rent-estado" class="field-input">
+            <option value="ACTIVA">Activa</option>
+            <option value="PROXIMO A PAGO">Próximo a Pago</option>
+            <option value="FINALIZADA">Finalizada</option>
+            <option value="VENCIDA">Vencida</option>
+            <option value="CANCELADA">Cancelada</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="Modal.close('modal-renta')">Cancelar</button>
+        <button class="btn btn-primary" id="btn-rent-save">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts de dependencias y lógica del módulo -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../js/config.js"></script>
+  <script src="../js/auth.js"></script>
+  <script src="../js/utils.js"></script>
+  <script src="../pages_js/rentas.js"></script>
+</body>
+
+</html>
