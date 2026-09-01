@@ -33,19 +33,21 @@ const Modal = {
     const el = document.getElementById(id);
     if (el) el.classList.add("open");
   },
-  close(id) {
-    // Prevent closing if saving is in progress
-    if (id === "modal-entry") {
-      const btn = document.getElementById("btn-entry-save");
-      if (btn && btn.disabled) return;
-    }
-    if (id === "modal-exit") {
-      const btn = document.getElementById("btn-exit-save");
-      if (btn && btn.disabled) return;
-    }
-    if (id === "modal-apartado") {
-      const btn = document.getElementById("btn-apartado-save");
-      if (btn && btn.disabled) return;
+  close(id, force = false) {
+    if (!force) {
+      // Prevent closing if saving is in progress
+      if (id === "modal-entry") {
+        const btn = document.getElementById("btn-entry-save");
+        if (btn && btn.disabled) return;
+      }
+      if (id === "modal-exit") {
+        const btn = document.getElementById("btn-exit-save");
+        if (btn && btn.disabled) return;
+      }
+      if (id === "modal-apartado") {
+        const btn = document.getElementById("btn-apartado-save");
+        if (btn && btn.disabled) return;
+      }
     }
     const el = document.getElementById(id);
     if (el) el.classList.remove("open");
