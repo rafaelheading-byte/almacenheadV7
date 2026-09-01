@@ -699,9 +699,9 @@ window.removeItem = function (idx) {
 };
 
 // Close modal and clean dropdowns
-window.closeApartadoModal = function () {
+window.closeApartadoModal = function (force = false) {
     document.getElementById("product-dropdown-results").classList.remove("open");
-    Modal.close("modal-apartado");
+    Modal.close("modal-apartado", force);
 };
 
 // ==========================================
@@ -824,7 +824,8 @@ window.saveApartado = async function () {
             Toast.show("Apartado actualizado exitosamente", "success");
         }
 
-        closeApartadoModal();
+        btn.disabled = false;
+        closeApartadoModal(true);
         loadApartados();
     } catch (err) {
         console.error("Error guardando apartado:", err);

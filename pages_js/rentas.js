@@ -305,13 +305,13 @@ function renderAccordion() {
                     <table class="rents-table">
                         <thead>
                             <tr>
-                                <th>Cliente</th>
+                                <th>Proveedor</th>
                                 <th style="width:140px;">Orden de Compra</th>
                                 <th>Descripción / Elementos</th>
                                 <th style="width:110px;">Inicio</th>
                                 <th style="width:110px;">Fin</th>
                                 <th style="width:160px;">Próximo Pago</th>
-                                <th style="width:120px;">Monto</th>
+                                <th style="width:135px;">Monto</th>
                                 <th style="width:110px;">Estado</th>
                                 ${canEdit ? '<th style="width:90px; text-align:center;">Acciones</th>' : ''}
                             </tr>
