@@ -21,22 +21,22 @@
       user-select: none;
       transition: background var(--transition);
     }
-    
+
     .accordion-header:hover {
       background: rgba(245, 196, 0, 0.03);
     }
-    
+
     .accordion-toggle-icon {
       transition: transform 250ms cubic-bezier(0.4, 0, 0.2, 1);
       width: 20px;
       height: 20px;
       color: var(--gray-mid);
     }
-    
+
     .table-card.expanded .accordion-toggle-icon {
       transform: rotate(180deg);
     }
-    
+
     .accordion-content {
       max-height: 0;
       overflow: hidden;
@@ -44,9 +44,10 @@
       background: #fdfdfd;
       border-top: 1px solid transparent;
     }
-    
+
     .table-card.expanded .accordion-content {
-      max-height: 2000px; /* Suficiente para tablas con registros */
+      max-height: 2000px;
+      /* Suficiente para tablas con registros */
       border-top: 1px solid #efefef;
     }
 
@@ -84,33 +85,35 @@
       font-weight: 600;
       font-family: var(--font-mono);
     }
-    
+
     /* Badges de estado específicos de rentas */
     .badge-activa {
       background: rgba(39, 174, 96, 0.12);
       color: #1a8a4a;
     }
-    
+
     .badge-finalizada {
       background: rgba(127, 140, 141, 0.15);
       color: #5d6d7e;
     }
-    
+
     .badge-vencida {
       background: rgba(230, 126, 34, 0.14);
       color: #c0620a;
     }
-    
+
     .badge-proximo-a-pago {
-      background: rgba(241, 196, 15, 0.15); /* Amarillo translúcido */
-      color: #b7950b; /* Amarillo/Dorado oscuro */
+      background: rgba(241, 196, 15, 0.15);
+      /* Amarillo translúcido */
+      color: #b7950b;
+      /* Amarillo/Dorado oscuro */
     }
-    
+
     .badge-cancelada {
       background: rgba(224, 53, 53, 0.12);
       color: #b52525;
     }
-    
+
     /* Hover en filas de rentas */
     .rents-table tbody tr:hover {
       background: rgba(245, 196, 0, 0.05) !important;
@@ -130,8 +133,10 @@
         </button>
         <span class="topbar-title">// RENTAS POR ALMACÉN</span>
         <div class="topbar-actions">
-          <button id="btn-export-excel" class="btn btn-secondary" onclick="exportRentsExcel()" title="Exportar Rentas a Excel">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px; height:14px;">
+          <button id="btn-export-excel" class="btn btn-secondary" onclick="exportRentsExcel()"
+            title="Exportar Rentas a Excel">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+              style="width:14px; height:14px;">
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
               <polyline points="14 2 14 8 20 8"></polyline>
               <line x1="16" y1="13" x2="8" y2="13"></line>
@@ -141,7 +146,8 @@
             Exportar Excel
           </button>
           <button id="btn-new-rent" class="btn btn-primary" onclick="openCreate()" style="display:none;">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:14px; height:14px;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+              style="width:14px; height:14px;">
               <line x1="12" y1="5" x2="12" y2="19" />
               <line x1="5" y1="12" x2="19" y2="12" />
             </svg>
@@ -165,7 +171,8 @@
       <div class="modal-header">
         <h3 id="modal-title">Nueva Renta</h3>
         <button class="btn btn-ghost btn-icon" onclick="Modal.close('modal-renta')">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width: 18px; height: 18px;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+            style="width: 18px; height: 18px;">
             <line x1="18" y1="6" x2="6" y2="18" />
             <line x1="6" y1="6" x2="18" y2="18" />
           </svg>
@@ -173,7 +180,7 @@
       </div>
       <div class="modal-body">
         <input type="hidden" id="rent-id" />
-        
+
         <div class="form-row cols-2">
           <div>
             <label class="field-label">Almacén *</label>
@@ -182,8 +189,8 @@
             </select>
           </div>
           <div>
-            <label class="field-label">Cliente *</label>
-            <input type="text" id="rent-cliente" class="field-input" placeholder="Nombre de la empresa o cliente" />
+            <label class="field-label">Proveedor *</label>
+            <input type="text" id="rent-cliente" class="field-input" placeholder="Nombre de la empresa o Proveedor" />
           </div>
         </div>
 
@@ -194,7 +201,8 @@
 
         <div class="mt-4">
           <label class="field-label">Descripción / Elementos Rentados *</label>
-          <textarea id="rent-descripcion" class="field-input" style="height: 100px; resize: vertical;" placeholder="Listado de herramientas, maquinaria o notas de la renta..."></textarea>
+          <textarea id="rent-descripcion" class="field-input" style="height: 100px; resize: vertical;"
+            placeholder="Listado de herramientas, maquinaria o notas de la renta..."></textarea>
         </div>
 
         <div class="form-row cols-2 mt-4">

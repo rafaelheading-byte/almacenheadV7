@@ -1,17 +1,518 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>HEAD STORE — Compras</title>
-    <link rel="stylesheet" href="../css/styles.css" />
-    <link rel="stylesheet" href="../css/apartado.css" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>HEAD STORE — Compras</title>
+  <link rel="stylesheet" href="../css/styles.css" />
+  <link rel="stylesheet" href="../css/apartado.css" />
+  <!-- SheetJS for Export to Excel -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <style>
+    /* Estilos personalizados y de jerarquía para Requisiciones y Pedidos */
+    .accordion-header {
+      padding: 18px 22px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      cursor: pointer;
+      background: var(--white);
+      user-select: none;
+      transition: background var(--transition);
+    }
+    
+    .accordion-header:hover {
+      background: rgba(245, 196, 0, 0.03);
+    }
+    
+    .accordion-toggle-icon {
+      transition: transform 250ms cubic-bezier(0.4, 0, 0.2, 1);
+      width: 20px;
+      height: 20px;
+      color: var(--gray-mid);
+    }
+    
+    .table-card.expanded .accordion-toggle-icon {
+      transform: rotate(180deg);
+    }
+    
+    .accordion-content {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 300ms ease-out, border-top var(--transition);
+      background: #fdfdfd;
+      border-top: 1px solid transparent;
+    }
+    
+    .table-card.expanded .accordion-content {
+      max-height: 5000px; /* Suficiente para requisiciones y tablas de pedidos */
+      border-top: 1px solid #efefef;
+    }
 
+    .accordion-info {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .accordion-title-container {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .accordion-title {
+      font-family: var(--font-mono);
+      font-weight: 700;
+      font-size: 1rem;
+      margin-bottom: 4px;
+      color: var(--black);
+    }
+
+    .accordion-subtitle {
+      font-size: 0.78rem;
+      color: var(--gray-mid);
+    }
+
+    .summary-badge {
+      background: var(--gray-pale);
+      color: var(--black);
+      border: 1px solid var(--gray-light);
+      padding: 2px 10px;
+      border-radius: 99px;
+      font-size: 0.72rem;
+      font-weight: 600;
+      font-family: var(--font-mono);
+    }
+
+    /* Estilo de fila de Requisición y toggle */
+    .requisicion-row {
+      cursor: pointer;
+      transition: background 150ms;
+    }
+
+    .requisicion-row:hover {
+      background: rgba(245, 196, 0, 0.02) !important;
+    }
+
+    .requisicion-row.expanded-req {
+      background: rgba(245, 196, 0, 0.04) !important;
+      border-bottom: none !important;
+    }
+
+    .requisicion-toggle-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
+      border-radius: 4px;
+      border: 1px solid var(--gray-light);
+      background: var(--white);
+      color: var(--black);
+      cursor: pointer;
+      font-weight: bold;
+      font-family: var(--font-mono);
+      transition: all 150ms;
+    }
+
+    .requisicion-toggle-btn:hover {
+      background: var(--black);
+      color: var(--yellow);
+      border-color: var(--black);
+    }
+
+    /* Fila de detalles anidados de pedidos */
+    .pedidos-detail-row {
+      background: #fcfcfc;
+    }
+
+    .pedidos-container {
+      padding: 12px 20px 20px 48px;
+      border-left: 3px solid var(--yellow-dim);
+      background: rgba(0, 0, 0, 0.01);
+    }
+
+    .pedidos-title {
+      font-family: var(--font-mono);
+      font-size: 0.78rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+      color: var(--gray-mid);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    /* Badges de estado específicos */
+    .badge-req-pendiente {
+      background: rgba(230, 126, 34, 0.12);
+      color: #c0620a;
+    }
+    
+    .badge-req-aprobada {
+      background: rgba(52, 152, 219, 0.12);
+      color: #2980b9;
+    }
+
+    .badge-req-completada {
+      background: rgba(39, 174, 96, 0.12);
+      color: #1a8a4a;
+    }
+
+    .badge-req-cancelada {
+      background: rgba(224, 53, 53, 0.12);
+      color: #b52525;
+    }
+
+    .badge-ped-pendiente {
+      background: rgba(230, 126, 34, 0.12);
+      color: #c0620a;
+      border: 1px solid rgba(230, 126, 34, 0.2);
+    }
+
+    .badge-ped-transito {
+      background: rgba(241, 196, 15, 0.15);
+      color: #b7950b;
+      border: 1px solid rgba(241, 196, 15, 0.2);
+    }
+
+    .badge-ped-recibido {
+      background: rgba(39, 174, 96, 0.12);
+      color: #1a8a4a;
+      border: 1px solid rgba(39, 174, 96, 0.2);
+    }
+
+    .badge-ped-cancelado {
+      background: rgba(224, 53, 53, 0.12);
+      color: #b52525;
+      border: 1px solid rgba(224, 53, 53, 0.2);
+    }
+
+    .badge-ped-falta-de-pago {
+      background: rgba(231, 76, 60, 0.12);
+      color: #c0392b;
+      border: 1px solid rgba(231, 76, 60, 0.2);
+    }
+
+    .ped-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.8rem;
+      background: var(--white);
+      border: 1px solid #eef0f2;
+      border-radius: var(--radius);
+      overflow: hidden;
+    }
+
+    .ped-table th {
+      background: #f5f7fa;
+      color: var(--gray-mid);
+      text-transform: uppercase;
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 10px 12px;
+      text-align: left;
+      border-bottom: 1px solid #e6e8eb;
+    }
+
+    .ped-table td {
+      padding: 10px 12px;
+      border-bottom: 1px solid #f0f2f5;
+      vertical-align: middle;
+    }
+
+    .ped-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .ped-table tbody tr:hover {
+      background: rgba(0, 0, 0, 0.015);
+    }
+
+    .actions-cell {
+      display: flex;
+      gap: 6px;
+      justify-content: flex-end;
+    }
+
+    .badge-container-wh {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+  </style>
 </head>
 
 <body>
-    <h1>Este modulo esta en construccion</h1>
+  <div class="app-layout">
+    <aside class="sidebar"></aside>
+    <div class="main-content">
+      <div class="topbar">
+        <button id="menu-toggle" class="menu-toggle btn-ghost btn-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 6h18M3 12h18M3 18h18" />
+          </svg>
+        </button>
+        <span class="topbar-title">// COMPRAS — CARÁTULAS</span>
+        <div class="topbar-actions">
+          <button id="btn-export-excel" class="btn btn-secondary" onclick="exportExcel()" title="Exportar Compras a Excel">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:14px; height:14px;">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <line x1="16" y1="13" x2="8" y2="13"></line>
+              <line x1="16" y1="17" x2="8" y2="17"></line>
+              <polyline points="10 9 9 9 8 9"></polyline>
+            </svg>
+            Exportar Excel
+          </button>
+          <button id="btn-new-requisicion" class="btn btn-primary" onclick="openCreateRequisicion()" style="display:none;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:14px; height:14px;">
+              <line x1="12" y1="5" x2="12" y2="19" />
+              <line x1="5" y1="12" x2="19" y2="12" />
+            </svg>
+            Nueva Requisición
+          </button>
+        </div>
+      </div>
+      <div class="page-content">
+        <div id="warehouses-accordion-container" style="display:flex; flex-direction:column; gap:16px;">
+          <div style="display: flex; justify-content: center; padding: 40px 0;">
+            <div class="spinner"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Crear/Editar Requisición -->
+  <div class="modal-overlay" id="modal-requisicion">
+    <div class="modal" style="max-width: 700px;">
+      <div class="modal-header">
+        <h3 id="requisicion-modal-title">Nueva Requisición</h3>
+        <button class="btn btn-ghost btn-icon" onclick="Modal.close('modal-requisicion')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width: 18px; height: 18px;">
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="req-id" />
+        
+        <div class="form-row cols-2">
+          <div>
+            <label class="field-label">Almacén *</label>
+            <select id="req-warehouse" class="field-input">
+              <option value="">Seleccione un almacén...</option>
+            </select>
+          </div>
+          <div>
+            <label class="field-label">Número Requisición *</label>
+            <input type="text" id="req-code" class="field-input" placeholder="Ej: REQ-2026-001" />
+          </div>
+        </div>
+
+        <div class="form-row cols-2 mt-4">
+          <div>
+            <label class="field-label">Solicitante</label>
+            <input type="text" id="req-solicitante" class="field-input" placeholder="Nombre de quien solicita" />
+          </div>
+          <div>
+            <label class="field-label">Fecha Requisición *</label>
+            <input type="date" id="req-fecha" class="field-input" />
+          </div>
+        </div>
+
+        <div class="mt-4">
+          <label class="field-label">Concepto / Comentarios</label>
+          <textarea id="req-concepto" class="field-input" style="height: 100px; resize: vertical;" placeholder="Concepto general de la requisición o elementos requeridos..."></textarea>
+        </div>
+
+        <div class="form-row cols-3 mt-4">
+          <div>
+            <label class="field-label">Monto Total ($) *</label>
+            <input type="number" id="req-monto" class="field-input" min="0" step="0.01" placeholder="0.00" />
+          </div>
+          <div>
+            <label class="field-label">Prioridad *</label>
+            <select id="req-prioridad" class="field-input">
+              <option value="1">1 - Alta</option>
+              <option value="2">2 - Media</option>
+              <option value="3" selected>3 - Baja</option>
+            </select>
+          </div>
+          <div>
+            <label class="field-label">Estado *</label>
+            <select id="req-estado" class="field-input">
+              <option value="PENDIENTE">Pendiente</option>
+              <option value="APROBADA">Aprobada</option>
+              <option value="COMPLETADA">Completada</option>
+              <option value="CANCELADA">Cancelada</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Add Products Section -->
+        <div id="add-req-product-section" style="margin-top: 20px; border-top: 1px solid #eee; padding-top: 15px;">
+          <h4 style="margin: 0 0 10px 0; font-size: 0.85rem; text-transform: uppercase; color: var(--gray-mid);">
+            Agregar Productos / Insumos
+          </h4>
+          <div style="display:flex; gap:10px; align-items: center;">
+            <div class="search-container" style="flex:1;">
+              <input type="text" id="req-product-search" class="field-input"
+                placeholder="Buscar producto por código o nombre..." autocomplete="off"
+                oninput="onReqProductSearchInput()" />
+              <div class="product-dropdown" id="req-product-dropdown-results"></div>
+            </div>
+            <input type="number" id="req-product-qty" class="field-input" placeholder="Cant."
+              style="width:90px; text-align:right;" min="0.01" step="any" />
+            <button class="btn btn-secondary" onclick="addInsumoToRequisicion()" style="padding: 9px 16px;">Agregar</button>
+          </div>
+        </div>
+
+        <!-- Selected Requisition Items Table -->
+        <div class="items-table-wrap" style="margin-top: 14px;">
+          <table class="items-table">
+            <thead>
+              <tr>
+                <th>Código</th>
+                <th>Descripción</th>
+                <th>Unidad</th>
+                <th style="text-align:right; width:100px;">Cantidad</th>
+                <th style="text-align:center; width:50px;">Eliminar</th>
+              </tr>
+            </thead>
+            <tbody id="req-items-body">
+              <!-- Selected items rows will append here -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="Modal.close('modal-requisicion')">Cancelar</button>
+        <button class="btn btn-primary" id="btn-requisicion-save">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Crear/Editar Pedido -->
+  <div class="modal-overlay" id="modal-pedido">
+    <div class="modal" style="max-width: 700px;">
+      <div class="modal-header">
+        <h3 id="pedido-modal-title">Nuevo Pedido</h3>
+        <button class="btn btn-ghost btn-icon" onclick="Modal.close('modal-pedido')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width: 18px; height: 18px;">
+            <line x1="18" y1="6" x2="6" y2="18" />
+            <line x1="6" y1="6" x2="18" y2="18" />
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="ped-id" />
+        <input type="hidden" id="ped-requisicion-id" />
+        
+        <div class="mt-2 mb-4" style="background:#f5f7fa; padding:12px 16px; border-radius:4px; border-left:4px solid var(--yellow-dim);">
+          <div style="font-size:0.75rem; text-transform:uppercase; color:var(--gray-mid); font-weight:700;">Requisición Relacionada</div>
+          <div id="ped-requisicion-info" style="font-family:var(--font-mono); font-size:0.85rem; font-weight:700; margin-top:2px; color:var(--black);">REQ-XXXX · Concepto</div>
+        </div>
+
+        <div class="form-row cols-2">
+          <div>
+            <label class="field-label">Número Pedido / OC *</label>
+            <input type="text" id="ped-code" class="field-input" placeholder="Ej: PED-10523 o OC-9843" />
+          </div>
+          <div>
+            <label class="field-label">Proveedor</label>
+            <select id="ped-supplier" class="field-input">
+              <option value="">Seleccione un proveedor...</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-row cols-3 mt-4">
+          <div>
+            <label class="field-label">Monto Total *</label>
+            <input type="number" id="ped-monto" class="field-input" min="0" step="0.01" placeholder="0.00" />
+          </div>
+          <div>
+            <label class="field-label">Fecha Pedido *</label>
+            <input type="date" id="ped-fecha-pedido" class="field-input" />
+          </div>
+          <div>
+            <label class="field-label">Fecha Entrega</label>
+            <input type="date" id="ped-fecha-entrega" class="field-input" />
+          </div>
+        </div>
+
+        <div class="mt-4">
+          <label class="field-label">Descripción del Pedido / Notas</label>
+          <textarea id="ped-descripcion" class="field-input" style="height: 80px; resize: vertical;" placeholder="Detalles de lo comprado, plazos de entrega, observaciones..."></textarea>
+        </div>
+
+        <div class="mt-4">
+          <label class="field-label">Estado *</label>
+          <select id="ped-estado" class="field-input">
+            <option value="PENDIENTE">Pendiente</option>
+            <option value="EN TRANSITO">En Tránsito</option>
+            <option value="RECIBIDO">Recibido</option>
+            <option value="FALTA DE PAGO">Falta de Pago</option>
+            <option value="CANCELADO">Cancelado</option>
+          </select>
+        </div>
+
+        <!-- Add Products Section -->
+        <div id="add-ped-product-section" style="margin-top: 20px; border-top: 1px solid #eee; padding-top: 15px;">
+          <h4 style="margin: 0 0 10px 0; font-size: 0.85rem; text-transform: uppercase; color: var(--gray-mid);">
+            Agregar Productos al Pedido
+          </h4>
+          <div style="display:flex; gap:10px; align-items: center;">
+            <div class="search-container" style="flex:1;">
+              <input type="text" id="ped-product-search" class="field-input"
+                placeholder="Buscar de los productos de la Requisición..." autocomplete="off"
+                oninput="onPedProductSearchInput()" />
+              <div class="product-dropdown" id="ped-product-dropdown-results"></div>
+              <!-- Max quantity indicator -->
+              <div id="ped-max-qty-info" style="margin-top:5px; display:none; font-size:0.72rem; padding:4px 8px; border-radius:4px; font-weight:600; background:rgba(245, 196, 0, 0.1); color:var(--yellow-dim);"></div>
+            </div>
+            <input type="number" id="ped-product-qty" class="field-input" placeholder="Cant."
+              style="width:90px; text-align:right;" min="0.01" step="any" />
+            <button class="btn btn-secondary" onclick="addInsumoToPedido()" style="padding: 9px 16px;">Agregar</button>
+          </div>
+        </div>
+
+        <!-- Selected Order Items Table -->
+        <div class="items-table-wrap" style="margin-top: 14px;">
+          <table class="items-table">
+            <thead>
+              <tr>
+                <th>Código</th>
+                <th>Descripción</th>
+                <th>Unidad</th>
+                <th style="text-align:right; width:100px;">Cantidad</th>
+                <th style="text-align:center; width:50px;">Eliminar</th>
+              </tr>
+            </thead>
+            <tbody id="ped-items-body">
+              <!-- Selected items rows will append here -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="Modal.close('modal-pedido')">Cancelar</button>
+        <button class="btn btn-primary" id="btn-pedido-save">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../js/config.js"></script>
+  <script src="../js/auth.js"></script>
+  <script src="../js/utils.js"></script>
+  <script src="../pages_js/compras.js"></script>
 </body>
 
 </html>
