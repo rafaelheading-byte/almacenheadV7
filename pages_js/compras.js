@@ -27,6 +27,8 @@ let selectedTempProduct = null;
 let selectedPedItems = [];
 let selectedTempPedProduct = null;
 let currentRequisitionItems = []; // Products allowed from the requisition
+let currentPedEvidenciaUrl = null;
+let pendingEvidenciaFile = null;
 
 // Initialize Page
 if (user) {
@@ -398,6 +400,7 @@ function renderAccordion() {
                                                 <th style="width:90px;">Fecha Pedido</th>
                                                 <th style="width:90px;">Entrega</th>
                                                 <th style="width:100px;">Estado</th>
+                                                <th style="width:90px; text-align:center;">Evidencia</th>
                                                 ${canEdit ? '<th style="width:80px; text-align:center;">Acciones</th>' : ''}
                                             </tr>
                                         </thead>
@@ -421,6 +424,14 @@ function renderAccordion() {
                                                        </td>`
                             : "";
 
+                        const evidenciaBtn = ped.evidencia_url
+                            ? `<td style="text-align:center; vertical-align:top;">
+                                                         <button type="button" class="btn btn-secondary btn-sm" style="padding:2px 6px; font-size:0.72rem; display:inline-flex; align-items:center; gap:4px; background:#eef6fc; color:#1f618d; border-color:#aed6f1; cursor:pointer;" title="Ver Evidencia PDF" onclick="openPdfEvidencia('${ped.id}', event)">
+                                                             📄 Ver PDF
+                                                         </button>
+                                                       </td>`
+                            : `<td style="text-align:center; vertical-align:top; color:var(--gray-light); font-size:0.75rem;">—</td>`;
+
                         return `
                                                     <tr>
                                                         <td style="font-weight:600; font-family:var(--font-mono); vertical-align:top;">${ped.numero_pedido}</td>
@@ -434,6 +445,7 @@ function renderAccordion() {
                                                         <td style="vertical-align:top;">
                                                             <span class="status-badge badge-ped-${ped.estado.toLowerCase().replace(/\s+/g, '-')}">${ped.estado}</span>
                                                         </td>
+                                                        ${evidenciaBtn}
                                                         ${editPedBtn}
                                                     </tr>
                                                 `;
@@ -994,6 +1006,123 @@ document.addEventListener("click", function (e) {
     }
 });
 
+// Helper function to convert base64 Data URL to Blob URL for browser tab opening
+function base64ToBlobUrl(dataUrl) {
+    try {
+        const parts = dataUrl.split(',');
+        const mimeMatch = parts[0].match(/:(.*?);/);
+        const mime = mimeMatch ? mimeMatch[1] : 'application/pdf';
+        const bstr = atob(parts[1]);
+        let n = bstr.length;
+        const u8arr = new Uint8Array(n);
+        while (n--) {
+            u8arr[n] = bstr.charCodeAt(n);
+        }
+        const blob = new Blob([u8arr], { type: mime });
+        return URL.createObjectURL(blob);
+    } catch (e) {
+        console.error("Error al convertir base64 a Blob URL:", e);
+        return dataUrl;
+    }
+}
+
+// Global handler to safely open PDF evidence in a new tab (supports Supabase URLs & Base64 Data URLs)
+window.openPdfEvidencia = function (target, event) {
+    if (event) event.stopPropagation();
+
+    let url = target;
+    // If target is a pedido ID, retrieve evidencia_url from pedidosList
+    if (target && !target.startsWith("http") && !target.startsWith("data:") && !target.startsWith("blob:")) {
+        const ped = pedidosList.find(p => p.id === target);
+        url = ped ? ped.evidencia_url : null;
+    }
+
+    if (!url) {
+        Toast.show("No hay evidencia PDF registrada en este pedido", "info");
+        return;
+    }
+
+    if (url.startsWith("data:")) {
+        const blobUrl = base64ToBlobUrl(url);
+        window.open(blobUrl, "_blank");
+    } else {
+        window.open(url, "_blank");
+    }
+};
+
+// Modal handler to preview current or pending PDF evidence
+window.openPdfEvidenciaInModal = function (event) {
+    if (event) event.preventDefault();
+    if (pendingEvidenciaFile) {
+        const tempUrl = URL.createObjectURL(pendingEvidenciaFile);
+        window.open(tempUrl, "_blank");
+    } else if (currentPedEvidenciaUrl) {
+        openPdfEvidencia(currentPedEvidenciaUrl, event);
+    } else {
+        Toast.show("No hay evidencia cargada", "info");
+    }
+};
+
+// Remove PDF evidence from Order modal
+window.removePedEvidencia = function () {
+    currentPedEvidenciaUrl = null;
+    pendingEvidenciaFile = null;
+    const fileInput = document.getElementById("ped-evidencia-file");
+    if (fileInput) fileInput.value = "";
+    const preview = document.getElementById("ped-evidencia-preview");
+    if (preview) preview.style.display = "none";
+};
+
+// Listen for PDF file selection
+document.addEventListener("change", (e) => {
+    if (e.target && e.target.id === "ped-evidencia-file") {
+        const file = e.target.files[0];
+        if (!file) return;
+        if (file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) {
+            Toast.show("Selecciona un archivo PDF válido", "error");
+            e.target.value = "";
+            return;
+        }
+        pendingEvidenciaFile = file;
+        const link = document.getElementById("ped-evidencia-link");
+        if (link) {
+            link.textContent = `📄 ${file.name} (PDF listo para guardar)`;
+        }
+        const preview = document.getElementById("ped-evidencia-preview");
+        if (preview) preview.style.display = "flex";
+    }
+});
+
+// Helper function to upload PDF file to Supabase Storage with Data URL fallback
+async function uploadEvidenciaPdf(file, pedidoNum) {
+    try {
+        const timestamp = Date.now();
+        const cleanNum = (pedidoNum || "ped").replace(/[^a-zA-Z0-9_-]/g, "_");
+        const filePath = `pedidos/${cleanNum}_${timestamp}.pdf`;
+
+        const { data, error } = await db.storage.from("evidencias").upload(filePath, file, {
+            cacheControl: "3600",
+            upsert: true
+        });
+
+        if (!error && data) {
+            const { data: publicUrlData } = db.storage.from("evidencias").getPublicUrl(filePath);
+            if (publicUrlData && publicUrlData.publicUrl) {
+                return publicUrlData.publicUrl;
+            }
+        }
+    } catch (err) {
+        console.warn("Supabase Storage bucket fallback triggered:", err);
+    }
+
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = (err) => reject(err);
+        reader.readAsDataURL(file);
+    });
+}
+
 // Order Modal Open / Creation Setup
 window.openCreatePedido = function (req) {
     if (!canEdit) { Toast.show("Sin permiso para agregar pedidos", "error"); return; }
@@ -1011,6 +1140,14 @@ window.openCreatePedido = function (req) {
     document.getElementById("ped-fecha-entrega").value = "";
     document.getElementById("ped-descripcion").value = "";
     document.getElementById("ped-estado").value = "PENDIENTE";
+
+    // Reset Evidence PDF state
+    currentPedEvidenciaUrl = null;
+    pendingEvidenciaFile = null;
+    const fileInput = document.getElementById("ped-evidencia-file");
+    if (fileInput) fileInput.value = "";
+    const preview = document.getElementById("ped-evidencia-preview");
+    if (preview) preview.style.display = "none";
 
     // Setup Requisition Items limits
     currentRequisitionItems = detallesRequiList.filter(d => d.requisicion_id === req.id);
@@ -1039,6 +1176,23 @@ window.openEditPedido = function (ped, req) {
     document.getElementById("ped-fecha-entrega").value = ped.fecha_entrega || "";
     document.getElementById("ped-descripcion").value = ped.descripcion || "";
     document.getElementById("ped-estado").value = ped.estado;
+
+    // Setup Evidence PDF state
+    currentPedEvidenciaUrl = ped.evidencia_url || null;
+    pendingEvidenciaFile = null;
+    const fileInput = document.getElementById("ped-evidencia-file");
+    if (fileInput) fileInput.value = "";
+    const preview = document.getElementById("ped-evidencia-preview");
+    const link = document.getElementById("ped-evidencia-link");
+    if (currentPedEvidenciaUrl) {
+        if (link) {
+            link.href = currentPedEvidenciaUrl;
+            link.textContent = "Ver Evidencia PDF Guardada";
+        }
+        if (preview) preview.style.display = "flex";
+    } else {
+        if (preview) preview.style.display = "none";
+    }
 
     // Setup Requisition Items limits
     currentRequisitionItems = detallesRequiList.filter(d => d.requisicion_id === req.id);
@@ -1096,6 +1250,20 @@ document.getElementById("btn-pedido-save").addEventListener("click", async () =>
     btn.disabled = true;
     btn.textContent = "Guardando...";
 
+    let evidencia_url = currentPedEvidenciaUrl;
+    if (pendingEvidenciaFile) {
+        btn.textContent = "Subiendo PDF...";
+        try {
+            evidencia_url = await uploadEvidenciaPdf(pendingEvidenciaFile, numero_pedido);
+        } catch (uploadErr) {
+            console.error("Error al subir archivo PDF:", uploadErr);
+            Toast.show("Error procesando archivo PDF: " + uploadErr.message, "error");
+            btn.disabled = false;
+            btn.textContent = "Guardar";
+            return;
+        }
+    }
+
     const payload = {
         requisicion_id,
         numero_pedido,
@@ -1104,6 +1272,7 @@ document.getElementById("btn-pedido-save").addEventListener("click", async () =>
         fecha_pedido,
         fecha_entrega,
         descripcion,
+        evidencia_url,
         estado,
         updated_at: new Date().toISOString()
     };
@@ -1144,7 +1313,11 @@ document.getElementById("btn-pedido-save").addEventListener("click", async () =>
         loadAll();
     } catch (err) {
         console.error("Error al guardar pedido y detalle:", err);
-        Toast.show("Error al guardar: " + err.message, "error");
+        if (err.code === "42703" || (err.message && err.message.includes("evidencia_url"))) {
+            Toast.show("Falta la columna 'evidencia_url' en Supabase. Ejecuta: ALTER TABLE public.pedidos ADD COLUMN IF NOT EXISTS evidencia_url TEXT;", "error", 10000);
+        } else {
+            Toast.show("Error al guardar: " + err.message, "error");
+        }
     } finally {
         btn.disabled = false;
         btn.textContent = "Guardar";
@@ -1228,13 +1401,14 @@ window.exportExcel = function () {
                 "Fecha Pedido": p.fecha_pedido ? fmt.date(p.fecha_pedido) : "",
                 "Fecha Entrega": p.fecha_entrega ? fmt.date(p.fecha_entrega) : "—",
                 "Estado": p.estado || "",
+                "Evidencia PDF": p.evidencia_url ? "SÍ (PDF Adjunto)" : "NO",
                 "Descripción / Notas": p.descripcion || "",
                 "Fecha Registro": p.created_at ? new Date(p.created_at).toLocaleString("es-MX") : ""
             };
         });
         const wsPed = XLSX.utils.json_to_sheet(pedRows);
         wsPed["!cols"] = [
-            { wch: 25 }, { wch: 22 }, { wch: 18 }, { wch: 25 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 30 }, { wch: 22 }
+            { wch: 25 }, { wch: 22 }, { wch: 18 }, { wch: 25 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 15 }, { wch: 18 }, { wch: 30 }, { wch: 22 }
         ];
         XLSX.utils.book_append_sheet(wb, wsPed, "PEDIDOS");
 

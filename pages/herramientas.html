@@ -450,6 +450,41 @@
           </select>
         </div>
 
+        <!-- Submódulo Kit de Accesorios (Herramientas Reales del Almacén Origen) -->
+        <div class="mt-4" id="transfer-kit-section" style="border: 1px solid #cbd5e1; border-radius: 8px; padding: 12px; background: #f8fafc;">
+          <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:4px;">
+            <label class="field-label" style="margin:0; font-weight:700; color:#1e293b; display:flex; align-items:center; gap:6px;">
+              <span>🧰 Submódulo Kit (Herramientas del Almacén Origen)</span>
+            </label>
+            <label style="display:flex; align-items:center; gap:6px; font-size:0.82rem; cursor:pointer; font-weight:600; color:#2563eb;">
+              <input type="checkbox" id="transfer-kit-enable" onchange="toggleTransferKitUI()" />
+              Incluir Kit de Accesorios
+            </label>
+          </div>
+          
+          <div id="transfer-kit-body" style="display:none; margin-top:10px; border-top:1px dashed #cbd5e1; padding-top:10px;">
+            <div style="font-size:0.75rem; color:#64748b; margin-bottom:8px;">
+              Selecciona las herramientas / accesorios registrados en este almacén que se trasladarán juntos:
+            </div>
+
+            <!-- Buscador interno de herramientas del almacén origen -->
+            <div style="margin-bottom:8px;">
+              <input type="text" id="kit-tools-search" class="field-input" placeholder="Buscar por código, nombre o serie en almacén origen..." style="font-size:0.8rem; padding:6px 10px;" oninput="renderKitOriginToolsList()" />
+            </div>
+
+            <!-- Contenedor desplegable con scroll de herramientas del almacén origen -->
+            <div id="kit-origin-tools-list" style="max-height: 180px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 6px; background: #ffffff; padding: 6px;">
+              <!-- Se puebla dinámicamente desde JS -->
+            </div>
+
+            <!-- Resumen de selección -->
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px; font-size:0.78rem; color:#475569;">
+              <span id="kit-selected-count-badge" style="font-weight:700; color:#2563eb;">0 accesorio(s) seleccionado(s)</span>
+              <span style="font-style:italic; font-size:0.72rem;">Se trasladarán en 1 solo movimiento</span>
+            </div>
+          </div>
+        </div>
+
         <!-- Motivo (select rápido) -->
         <div class="mt-4">
           <label class="field-label" id="transfer-reason-label">Motivo de transferencia *</label>

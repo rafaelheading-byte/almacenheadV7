@@ -38,7 +38,7 @@ const COLORS = [
 const STATUS_LABELS = {
     ACTIVA: { label: 'Activa', cls: 'status-activa', dot: '#27AE60' },
     PERDIDA: { label: 'PERDIDA', cls: 'status-perdida', dot: '#0D0D0D' },
-    EN_MANTENIMIENTO: { label: 'En mantenimiento', cls: 'status-en_mantenimiento', dot: '7F8C8D' },
+    EN_MANTENIMIENTO: { label: 'En mantenimiento', cls: 'status-en_mantenimiento', dot: '#7F8C8D' },
     REPARACION: { label: 'Reparación', cls: 'status-reparacion', dot: '#E03535' },
     RESGUARDO: { label: 'Resguardo', cls: 'status-resguardo', dot: '#2980B9' },
 };
@@ -198,9 +198,13 @@ function showLoadingState() {
 }
 
 function renderAll() {
-    const q = document.getElementById('search-input').value.toLowerCase().trim();
-    const sts = activeStatusFilter || document.getElementById('filter-status').value;
-    const whId = document.getElementById('filter-warehouse').value;
+    const searchInput = document.getElementById('search-input');
+    const filterStatus = document.getElementById('filter-status');
+    const filterWh = document.getElementById('filter-warehouse');
+
+    const q = searchInput ? searchInput.value.toLowerCase().trim() : '';
+    const sts = activeStatusFilter || (filterStatus ? filterStatus.value : '');
+    const whId = filterWh ? filterWh.value : '';
 
     const active = allTools.filter(t => t.is_active !== false);
 
@@ -217,7 +221,8 @@ function renderAll() {
         return mq && ms && mw;
     });
 
-    document.getElementById('record-count').textContent = `${data.length} herramienta(s)`;
+    const recordCount = document.getElementById('record-count');
+    if (recordCount) recordCount.textContent = `${data.length} herramienta(s)`;
     const activeForStatus = active.filter(t => !whId || t.warehouse_id === whId);
     renderStatusBar(activeForStatus);
 
@@ -384,12 +389,17 @@ function setView(v) {
 /* ════════════════════════════════════════
    FILTERS
 ════════════════════════════════════════ */
-document.getElementById('search-input').addEventListener('input', renderAll);
-document.getElementById('filter-status').addEventListener('change', e => {
+const searchInputEl = document.getElementById('search-input');
+if (searchInputEl) searchInputEl.addEventListener('input', renderAll);
+
+const filterStatusEl = document.getElementById('filter-status');
+if (filterStatusEl) filterStatusEl.addEventListener('change', e => {
     activeStatusFilter = e.target.value;
     renderAll();
 });
-document.getElementById('filter-warehouse').addEventListener('change', renderAll);
+
+const filterWhEl = document.getElementById('filter-warehouse');
+if (filterWhEl) filterWhEl.addEventListener('change', renderAll);
 
 /* ════════════════════════════════════════
    DETAIL MODAL
@@ -574,11 +584,21 @@ async function reprintTransferFromDetail() {
             no_serie: transfer.herramientas?.no_serie || currentDetailTool.no_serie,
             descripcion: transfer.herramientas?.descripcion || currentDetailTool.descripcion,
         };
+        const notesStr = transfer.notes || '';
+        let kitItems = null;
+        const kitMatch = notesStr.match(/\[KIT:\s*([^\]]+)\]/);
+        if (kitMatch) {
+            kitItems = kitMatch[1].split(' | ');
+        }
+
+        const cleanReason = notesStr.replace(/\[KIT:\s*([^\]]+)\]/, '').replace(/^—\s*|\s*—$/g, '').trim();
+
         printTransferFormat({
             tool: t,
             prevWh: { name: transfer.prev_warehouse_name || '—' },
             newWh: { name: transfer.new_warehouse_name || '—' },
-            reason: transfer.notes || 'Reimpresión de traslado',
+            reason: cleanReason || 'Reimpresión de traslado',
+            kitItems: kitItems,
             userName: transfer.users?.full_name || user.full_name || user.email || 'Usuario',
             date: new Date(transfer.created_at || Date.now()),
         });
@@ -829,6 +849,9 @@ async function openTransfer(id) {
     document.getElementById('transfer-custom-wrap').style.display = 'none';
     document.getElementById('transfer-dest-preview').textContent = 'Selecciona...';
 
+    /* Reset & populate Kit Submodule */
+    resetTransferKitForm(t);
+
     /* Live preview */
     newWh.onchange = () => {
         const sel = newWh.options[newWh.selectedIndex];
@@ -852,6 +875,107 @@ async function openTransfer(id) {
     if (saveBtnLabel) saveBtnLabel.textContent = 'Confirmar Transferencia';
 
     Modal.open('modal-transfer');
+}
+
+/* ════════════════════════════════════════
+   SUBMÓDULO KIT DE ACCESORIOS - HELPERS
+════════════════════════════════════════ */
+let currentOriginKitTools = [];
+let selectedKitToolIds = new Set();
+
+function toggleTransferKitUI() {
+    const enableCheck = document.getElementById('transfer-kit-enable');
+    const enabled = enableCheck ? enableCheck.checked : false;
+    const body = document.getElementById('transfer-kit-body');
+    if (body) body.style.display = enabled ? 'block' : 'none';
+}
+
+function resetTransferKitForm(tool) {
+    selectedKitToolIds.clear();
+    const searchInput = document.getElementById('kit-tools-search');
+    if (searchInput) searchInput.value = '';
+
+    // Filter available active tools in the exact same origin warehouse (excluding current main tool)
+    currentOriginKitTools = allTools.filter(x =>
+        x.warehouse_id === tool.warehouse_id &&
+        x.id !== tool.id &&
+        x.is_active !== false
+    );
+
+    const enableCheck = document.getElementById('transfer-kit-enable');
+    if (enableCheck) enableCheck.checked = false;
+
+    renderKitOriginToolsList();
+    toggleTransferKitUI();
+}
+
+function renderKitOriginToolsList() {
+    const listWrap = document.getElementById('kit-origin-tools-list');
+    const badge = document.getElementById('kit-selected-count-badge');
+    if (!listWrap) return;
+
+    const q = (document.getElementById('kit-tools-search')?.value || '').toLowerCase().trim();
+
+    const filtered = currentOriginKitTools.filter(t => {
+        return !q ||
+            (t.codigo_head || '').toLowerCase().includes(q) ||
+            (t.nombre || '').toLowerCase().includes(q) ||
+            (t.marca || '').toLowerCase().includes(q) ||
+            (t.modelo || '').toLowerCase().includes(q) ||
+            (t.no_serie || '').toLowerCase().includes(q);
+    });
+
+    if (badge) {
+        badge.textContent = `${selectedKitToolIds.size} herramienta(s)/accesorio(s) seleccionado(s)`;
+    }
+
+    if (!currentOriginKitTools.length) {
+        listWrap.innerHTML = `<div style="padding:10px; font-size:0.78rem; color:#94a3b8; text-align:center;">No hay otras herramientas registradas en este almacén.</div>`;
+        return;
+    }
+
+    if (!filtered.length) {
+        listWrap.innerHTML = `<div style="padding:10px; font-size:0.78rem; color:#94a3b8; text-align:center;">Sin resultados para "${escapeHtml(q)}"</div>`;
+        return;
+    }
+
+    listWrap.innerHTML = filtered.map(t => {
+        const isChecked = selectedKitToolIds.has(t.id);
+        const icon = TOOL_ICONS[t.tool_types?.name] || '🛠️';
+        const meta = [t.marca, t.modelo, t.no_serie ? `SN:${t.no_serie}` : null].filter(Boolean).join(' · ');
+
+        return `
+          <div style="display:flex; align-items:center; justify-content:space-between; padding:6px 8px; border-bottom:1px solid #f1f5f9; background:${isChecked ? '#eff6ff' : '#fff'}; transition:background 0.15s;">
+            <label style="display:flex; align-items:center; gap:8px; font-size:0.82rem; cursor:pointer; flex:1; margin:0;">
+              <input type="checkbox" value="${t.id}" ${isChecked ? 'checked' : ''} onchange="toggleKitToolSelection('${t.id}', this.checked)" />
+              <span style="font-size:0.95rem;">${icon}</span>
+              <div>
+                <span style="font-weight:700; color:#0f172a; font-family:monospace;">${escapeHtml(t.codigo_head)}</span>
+                <span style="font-weight:600; color:#1e293b; margin-left:4px;">${escapeHtml(t.nombre)}</span>
+                <div style="font-size:0.73rem; color:#64748b; margin-top:1px;">${escapeHtml(meta || 'Sin más datos')}</div>
+              </div>
+            </label>
+          </div>`;
+    }).join('');
+}
+
+function toggleKitToolSelection(toolId, isChecked) {
+    if (isChecked) {
+        selectedKitToolIds.add(toolId);
+    } else {
+        selectedKitToolIds.delete(toolId);
+    }
+    const badge = document.getElementById('kit-selected-count-badge');
+    if (badge) {
+        badge.textContent = `${selectedKitToolIds.size} herramienta(s)/accesorio(s) seleccionado(s)`;
+    }
+    renderKitOriginToolsList();
+}
+
+function getSelectedKitTools() {
+    const enableCheck = document.getElementById('transfer-kit-enable');
+    if (!enableCheck || !enableCheck.checked) return [];
+    return currentOriginKitTools.filter(t => selectedKitToolIds.has(t.id));
 }
 
 function onTransferReasonChange() {
@@ -882,52 +1006,70 @@ document.getElementById('btn-transfer-save').addEventListener('click', async () 
     }
 
     const reason = reasonSel === 'otro' ? reasonCustom : reasonSel;
-    const notes = [reason, extraNotes].filter(Boolean).join(' — ');
-
     const t = currentTransferTool;
+    const kitTools = getSelectedKitTools();
+
+    // Compile tool list IDs (Main Tool + Selected Kit Tools)
+    const allTransferToolIds = [t.id, ...kitTools.map(k => k.id)];
+    const kitCodesString = kitTools.length ? `[KIT: ${kitTools.map(k => `${k.codigo_head} (${k.nombre})`).join(' | ')}]` : '';
+    const notes = [reason, kitCodesString, extraNotes].filter(Boolean).join(' — ');
+
     const prevWh = allWarehouses.find(w => w.id === t.warehouse_id) || warehouses.find(w => w.id === t.warehouse_id);
     const newWh = allWarehouses.find(w => w.id === destId) || warehouses.find(w => w.id === destId);
 
     const btn = document.getElementById('btn-transfer-save');
     btn.disabled = true;
-    btn.textContent = 'Transfiriendo...';
+    btn.textContent = `Transfiriendo (${allTransferToolIds.length} herramienta/s)...`;
 
     try {
-        /* 1. Update tool */
+        /* 1. Batch Update all tools (Main Tool + Kit Tools) to new warehouse & status */
         const { error: updErr } = await db
             .from('herramientas')
             .update({ warehouse_id: destId, status: status })
-            .eq('id', t.id);
+            .in('id', allTransferToolIds);
         if (updErr) throw updErr;
 
-        /* 2. Insert movement record */
-        const { error: movErr } = await db.from('herramienta_movements').insert({
-            herramienta_id: t.id,
-            prev_status: t.status,
-            new_status: status,
-            prev_project_id: t.project_id || null,
-            new_project_id: t.project_id || null,
-            prev_warehouse_id: t.warehouse_id || null,
-            new_warehouse_id: destId,
-            prev_warehouse_name: prevWh?.name || null,
-            new_warehouse_name: newWh?.name || null,
-            notes,
-            created_by: user.id,
+        /* 2. Insert movement records for all tools in 1 transaction batch */
+        const movementsPayload = allTransferToolIds.map(toolId => {
+            const isMain = toolId === t.id;
+            const toolObj = isMain ? t : kitTools.find(k => k.id === toolId);
+            const itemNotes = isMain
+                ? notes
+                : `Traslado en Kit con ${t.codigo_head} — ${reason}`;
+
+            return {
+                herramienta_id: toolId,
+                prev_status: toolObj?.status || t.status,
+                new_status: status,
+                prev_project_id: toolObj?.project_id || null,
+                new_project_id: toolObj?.project_id || null,
+                prev_warehouse_id: toolObj?.warehouse_id || null,
+                new_warehouse_id: destId,
+                prev_warehouse_name: prevWh?.name || null,
+                new_warehouse_name: newWh?.name || null,
+                notes: itemNotes,
+                created_by: user.id,
+            };
         });
+
+        const { error: movErr } = await db.from('herramienta_movements').insert(movementsPayload);
         if (movErr) throw movErr;
 
-        /* 3. Generate & print transfer document */
+        /* 3. Generate & print unified transfer document */
         t.status = status;
+        const cleanReason = [reason, extraNotes].filter(Boolean).join(' — ');
         printTransferFormat({
             tool: t,
+            kitTools: kitTools,
             prevWh: prevWh,
             newWh: newWh,
-            reason: notes,
+            reason: cleanReason,
             userName: user.full_name || user.email || 'Usuario',
             date: new Date(),
         });
 
-        Toast.show(`✅ Herramienta transferida a ${newWh?.name || 'nuevo almacén'}`, 'success');
+        const countMsg = kitTools.length > 0 ? ` (+${kitTools.length} en kit)` : '';
+        Toast.show(`✅ Transferencia de ${t.codigo_head}${countMsg} realizada a ${newWh?.name || 'nuevo almacén'}`, 'success');
         Modal.close('modal-transfer');
         await loadTools();
 
@@ -945,7 +1087,7 @@ document.getElementById('btn-transfer-save').addEventListener('click', async () 
 /* ════════════════════════════════════════
    TRANSFER FORMAT (VALE DE TRASLADO)
 ════════════════════════════════════════ */
-function printTransferFormat({ tool: t, prevWh, newWh, reason, userName, date }) {
+function printTransferFormat({ tool: t, kitTools, kitItems, prevWh, newWh, reason, userName, date }) {
     const folio = 'TRF-' + date.getFullYear() +
         String(date.getMonth() + 1).padStart(2, '0') +
         String(date.getDate()).padStart(2, '0') + '-' +
@@ -1087,6 +1229,34 @@ function printTransferFormat({ tool: t, prevWh, newWh, reason, userName, date })
         '<div class="detail-cell"><div class="dc-label">Fecha de transferencia<\/div><div class="dc-val">' + fechaStr + '<\/div><\/div>' +
         '<div class="detail-cell"><div class="dc-label">Hora de transferencia<\/div><div class="dc-val">' + horaStr + '<\/div><\/div>' +
         '<\/div>' +
+
+        // ── Kit / Accesorios Incluidos (Herramientas Reales del Almacén)
+        ((kitTools && kitTools.length) ?
+            '<div class="reason-box" style="border-color:#2563eb; background:rgba(37,99,235,.04); margin-bottom:16px;">' +
+            '<div class="reason-label" style="color:#1d4ed8; font-weight:700;">\ud83e\uddf0 ACCESORIOS / HERRAMIENTAS INCLUIDAS EN EL KIT DE TRASLADO</div>' +
+            '<table style="width:100%; border-collapse:collapse; margin-top:6px; font-size:8.5pt; background:#fff; border:1px solid #cbd5e1;">' +
+            '<thead><tr style="background:#f1f5f9; text-align:left;">' +
+            '<th style="padding:4px 6px; border-bottom:1px solid #cbd5e1;">C\u00f3digoHEAD</th>' +
+            '<th style="padding:4px 6px; border-bottom:1px solid #cbd5e1;">Herramienta / Accesorio</th>' +
+            '<th style="padding:4px 6px; border-bottom:1px solid #cbd5e1;">Marca / Modelo</th>' +
+            '<th style="padding:4px 6px; border-bottom:1px solid #cbd5e1;">No. Serie</th>' +
+            '</tr><\/thead><tbody>' +
+            kitTools.map(k =>
+                '<tr style="border-bottom:1px solid #f1f5f9;">' +
+                '<td style="padding:4px 6px; font-family:monospace; font-weight:700;">' + escapeHtml(k.codigo_head || '') + '</td>' +
+                '<td style="padding:4px 6px; font-weight:600;">' + escapeHtml(k.nombre || '') + '</td>' +
+                '<td style="padding:4px 6px;">' + escapeHtml([k.marca, k.modelo].filter(Boolean).join(' / ') || '\u2014') + '</td>' +
+                '<td style="padding:4px 6px; font-family:monospace;">' + escapeHtml(k.no_serie || '\u2014') + '</td>' +
+                '</tr>'
+            ).join('') +
+            '<\/tbody><\/table>' +
+            '<\/div>' :
+        (kitItems && kitItems.length) ?
+            '<div class="reason-box" style="border-color:#2563eb; background:rgba(37,99,235,.04); margin-bottom:16px;">' +
+            '<div class="reason-label" style="color:#1d4ed8; font-weight:700;">\ud83e\uddf0 ACCESORIOS / KIT INCLUIDO EN TRASLADO</div>' +
+            '<div class="reason-text" style="margin-top:4px;"><ul style="margin-left:18px; line-height:1.6;">' +
+            kitItems.map(item => '<li>' + escapeHtml(item) + '</li>').join('') +
+            '</ul></div></div>' : '') +
 
         // ── Reason
         '<div class="reason-box">' +
