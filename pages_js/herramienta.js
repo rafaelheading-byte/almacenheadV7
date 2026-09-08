@@ -11,6 +11,10 @@ const allowedWarehouseIds = Auth.getAllowedWarehouseIds();
 const isRestricted = allowedWarehouseIds !== null;
 
 /* ── State ── */
+let currentPage = 1;
+const pageSize = 20;
+let totalRecords = 0;
+
 let allTools = [];
 let toolTypes = [];
 let projects = [];
@@ -20,6 +24,57 @@ let currentView = 'grid';
 let activeStatusFilter = '';
 let currentDetailTool = null;
 let currentQRTool = null;
+
+let selectedToolImageBase64 = null;
+
+// Configurar carga de archivo de imagen y conversión a Base64
+document.addEventListener('DOMContentLoaded', () => {
+    const fileInput = document.getElementById('tool-image-file');
+    if (fileInput) {
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            if (file.size > 2 * 1024 * 1024) {
+                Toast.show('La imagen no debe superar los 2MB', 'error');
+                e.target.value = '';
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                selectedToolImageBase64 = event.target.result;
+                const imgPreview = document.getElementById('tool-modal-image-preview');
+                const previewContainer = document.getElementById('tool-image-preview-container');
+                const fileNameText = document.getElementById('tool-file-name-text');
+                if (imgPreview) imgPreview.src = selectedToolImageBase64;
+                if (previewContainer) previewContainer.style.display = 'block';
+                if (fileNameText) fileNameText.textContent = file.name;
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+});
+
+function removeSelectedToolImage() {
+    selectedToolImageBase64 = null;
+    const fileInput = document.getElementById('tool-image-file');
+    if (fileInput) fileInput.value = '';
+    const imgPreview = document.getElementById('tool-modal-image-preview');
+    if (imgPreview) imgPreview.src = '';
+    const previewContainer = document.getElementById('tool-image-preview-container');
+    if (previewContainer) previewContainer.style.display = 'none';
+    const fileNameText = document.getElementById('tool-file-name-text');
+    if (fileNameText) fileNameText.textContent = 'Sin archivo';
+}
+
+function previewImage(src, name) {
+    const titleEl = document.getElementById('preview-image-title');
+    const imgEl = document.getElementById('preview-image-element');
+    if (titleEl) titleEl.textContent = name || 'Vista Previa';
+    if (imgEl) imgEl.src = src;
+    Modal.open('modal-image-preview-large');
+}
 
 /* ── Constants ── */
 const COLORS = [
@@ -158,32 +213,73 @@ async function loadAll() {
     }
 }
 
-async function loadTools() {
+async function loadTools(page = 1) {
+    currentPage = page;
     showLoadingState();
+
+    const searchInput = document.getElementById('search-input');
+    const filterStatus = document.getElementById('filter-status');
+    const filterWh = document.getElementById('filter-warehouse');
+
+    const q = searchInput ? searchInput.value.toLowerCase().trim() : '';
+    const sts = activeStatusFilter || (filterStatus ? filterStatus.value : '');
+    const whId = filterWh ? filterWh.value : '';
+
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
+
     try {
-        let queryFunc = (f, t) => {
-            let q = db.from('herramientas')
-                .select('*, tool_types(name), projects(name,code), warehouses(name)');
-            if (isRestricted) {
-                q = q.in('warehouse_id', allowedWarehouseIds.length > 0 ? allowedWarehouseIds : ['00000000-0000-0000-0000-000000000000']);
-            }
-            return q.order('codigo_head').range(f, t);
-        };
+        let query = db
+            .from('herramientas')
+            .select('*, tool_types(name), projects(name,code), warehouses(name)', { count: 'exact' })
+            .order('codigo_head');
 
-        let countFunc = () => {
-            let q = db.from('herramientas').select('id', { count: 'exact', head: true });
-            if (isRestricted) {
-                q = q.in('warehouse_id', allowedWarehouseIds.length > 0 ? allowedWarehouseIds : ['00000000-0000-0000-0000-000000000000']);
-            }
-            return q;
-        };
+        if (isRestricted) {
+            query = query.in('warehouse_id', allowedWarehouseIds.length > 0 ? allowedWarehouseIds : ['00000000-0000-0000-0000-000000000000']);
+        }
+        if (q) {
+            query = query.or(`nombre.ilike.%${q}%,codigo_head.ilike.%${q}%,marca.ilike.%${q}%,modelo.ilike.%${q}%,no_serie.ilike.%${q}%,color.ilike.%${q}%`);
+        }
+        if (sts) {
+            query = query.eq('status', sts);
+        }
+        if (whId) {
+            query = query.eq('warehouse_id', whId);
+        }
 
-        allTools = await fetchAll(queryFunc, countFunc);
+        const { data, error, count } = await query.range(from, to);
+
+        if (error) throw error;
+
+        allTools = data || [];
+        totalRecords = count !== null && count !== undefined ? count : allTools.length;
+
+        loadStatusCounts(whId);
+        renderAll();
     } catch (err) {
+        console.error('Error cargando herramientas:', err);
         Toast.show('Error cargando herramientas: ' + err.message, 'error');
         allTools = [];
+        totalRecords = 0;
+        renderAll();
     }
-    renderAll();
+}
+
+async function loadStatusCounts(whId) {
+    try {
+        let q = db.from('herramientas').select('status');
+        if (isRestricted) {
+            q = q.in('warehouse_id', allowedWarehouseIds.length > 0 ? allowedWarehouseIds : ['00000000-0000-0000-0000-000000000000']);
+        }
+        if (whId) {
+            q = q.eq('warehouse_id', whId);
+        }
+        const { data, error } = await q;
+        if (error) return;
+        renderStatusBar(data || []);
+    } catch (e) {
+        console.error(e);
+    }
 }
 
 /* ════════════════════════════════════════
@@ -194,43 +290,64 @@ function showLoadingState() {
         `<div style="grid-column:1/-1; padding:60px; text-align:center;">
            <div class="spinner" style="margin:0 auto;"></div>
          </div>`;
-    document.getElementById('tool-list-body').innerHTML = loadingRow(10);
+    document.getElementById('tool-list-body').innerHTML = loadingRow(11);
 }
 
 function renderAll() {
-    const searchInput = document.getElementById('search-input');
-    const filterStatus = document.getElementById('filter-status');
-    const filterWh = document.getElementById('filter-warehouse');
-
-    const q = searchInput ? searchInput.value.toLowerCase().trim() : '';
-    const sts = activeStatusFilter || (filterStatus ? filterStatus.value : '');
-    const whId = filterWh ? filterWh.value : '';
-
-    const active = allTools.filter(t => t.is_active !== false);
-
-    const data = active.filter(t => {
-        const mq = !q ||
-            (t.nombre || '').toLowerCase().includes(q) ||
-            (t.codigo_head || '').toLowerCase().includes(q) ||
-            (t.marca || '').toLowerCase().includes(q) ||
-            (t.modelo || '').toLowerCase().includes(q) ||
-            (t.no_serie || '').toLowerCase().includes(q) ||
-            (t.color || '').toLowerCase().includes(q);
-        const ms = !sts || t.status === sts;
-        const mw = !whId || t.warehouse_id === whId;
-        return mq && ms && mw;
-    });
-
+    const totalPages = Math.ceil(totalRecords / pageSize) || 1;
     const recordCount = document.getElementById('record-count');
-    if (recordCount) recordCount.textContent = `${data.length} herramienta(s)`;
-    const activeForStatus = active.filter(t => !whId || t.warehouse_id === whId);
-    renderStatusBar(activeForStatus);
+    if (recordCount) {
+        recordCount.textContent = `${totalRecords} herramienta(s) [Pág. ${currentPage}/${totalPages}]`;
+    }
 
     if (currentView === 'grid') {
-        renderGrid(data);
+        renderGrid(allTools);
     } else {
-        renderList(data);
+        renderList(allTools);
     }
+    renderPagination();
+}
+
+function renderPagination() {
+    const totalPages = Math.ceil(totalRecords / pageSize);
+    const container = document.getElementById("pagination");
+    if (!container) return;
+
+    if (totalPages <= 1) {
+        container.innerHTML = totalRecords > 0 
+            ? `<span class="text-muted" style="font-size:0.85rem;">Total: ${totalRecords} herramienta(s)</span>` 
+            : "";
+        return;
+    }
+
+    const startItem = (currentPage - 1) * pageSize + 1;
+    const endItem = Math.min(currentPage * pageSize, totalRecords);
+
+    container.innerHTML = `
+        <button
+            class="btn btn-secondary btn-sm"
+            ${currentPage === 1 ? "disabled" : ""}
+            onclick="loadTools(${currentPage - 1})"
+            title="Página Anterior (Flecha ←)"
+            style="display:inline-flex; align-items:center; gap:4px;"
+        >
+            ← Anterior
+        </button>
+
+        <span style="font-size:0.85rem; font-weight:500;">
+            Página <strong>${currentPage}</strong> de <strong>${totalPages}</strong> (${startItem}-${endItem} de ${totalRecords})
+        </span>
+
+        <button
+            class="btn btn-secondary btn-sm"
+            ${currentPage === totalPages ? "disabled" : ""}
+            onclick="loadTools(${currentPage + 1})"
+            title="Página Siguiente (Flecha →)"
+            style="display:inline-flex; align-items:center; gap:4px;"
+        >
+            Siguiente →
+        </button>
+    `;
 }
 
 function renderStatusBar(active) {
@@ -254,8 +371,9 @@ function renderStatusBar(active) {
 
 function setStatusFilter(status) {
     activeStatusFilter = status;
-    document.getElementById('filter-status').value = status;
-    renderAll();
+    const filterStatus = document.getElementById('filter-status');
+    if (filterStatus) filterStatus.value = status;
+    loadTools(1);
 }
 
 function renderGrid(data) {
@@ -282,12 +400,14 @@ function renderGrid(data) {
           <div class="tool-card-color" style="background:${st.dot || '#ccc'};"></div>
           <div class="tool-card-inner">
             <div class="tool-card-header">
-              <div>
+              <div style="flex:1; min-width:0;">
                 <div class="tool-card-code">${t.codigo_head}</div>
                 <div class="tool-card-name">${t.nombre}</div>
                 <div class="tool-card-type">${t.tool_types?.name || '—'}</div>
               </div>
-              <div style="font-size:1.8rem; line-height:1; flex-shrink:0;">${icon}</div>
+              ${t.image_url ? `
+                <img src="${t.image_url}" alt="${t.nombre}" style="width: 72px; height: 72px; object-fit: contain; border-radius: 8px; border: 1px solid #cbd5e1; background: #fff; cursor: pointer; flex-shrink: 0;" onclick="event.stopPropagation(); previewImage('${t.image_url.replace(/'/g, "\\'")}', '${t.nombre.replace(/'/g, "\\'")}')" title="Ver imagen" />
+              ` : `<div style="font-size:1.8rem; line-height:1; flex-shrink:0;">${icon}</div>`}
             </div>
             <div class="tool-card-body">
               ${t.marca || t.modelo ? `
@@ -336,14 +456,18 @@ function renderGrid(data) {
 
 function renderList(data) {
     const tbody = document.getElementById('tool-list-body');
-    if (!data.length) { tbody.innerHTML = emptyRow(10, 'Sin herramientas'); return; }
+    if (!data.length) { tbody.innerHTML = emptyRow(11, 'Sin herramientas'); return; }
 
     tbody.innerHTML = data.map(t => {
         const st = STATUS_LABELS[t.status] || { label: t.status, cls: '' };
         const color = getColorHex(t.color);
+        const imgTd = t.image_url ? `
+            <img src="${t.image_url}" alt="${t.nombre}" style="width:52px; height:52px; object-fit:contain; border-radius:6px; border:1px solid var(--gray-light); cursor:pointer;" onclick="event.stopPropagation(); previewImage('${t.image_url.replace(/'/g, "\\'")}', '${t.nombre.replace(/'/g, "\\'")}')" title="Ver imagen" />
+        ` : '<span class="text-muted" style="font-size:0.8rem;">—</span>';
         return `
         <tr style="cursor:pointer;" onclick="openDetail('${t.id}')">
           <td class="code-cell">${t.codigo_head}</td>
+          <td>${imgTd}</td>
           <td class="fw-600">${t.nombre}</td>
           <td class="text-muted">${t.tool_types?.name || '—'}</td>
           <td class="text-muted">${[t.marca, t.modelo].filter(Boolean).join(' / ') || '—'}</td>
@@ -389,17 +513,47 @@ function setView(v) {
 /* ════════════════════════════════════════
    FILTERS
 ════════════════════════════════════════ */
+let searchTimeout;
 const searchInputEl = document.getElementById('search-input');
-if (searchInputEl) searchInputEl.addEventListener('input', renderAll);
+if (searchInputEl) {
+    searchInputEl.addEventListener('input', () => {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            loadTools(1);
+        }, 300);
+    });
+}
 
 const filterStatusEl = document.getElementById('filter-status');
 if (filterStatusEl) filterStatusEl.addEventListener('change', e => {
     activeStatusFilter = e.target.value;
-    renderAll();
+    loadTools(1);
 });
 
 const filterWhEl = document.getElementById('filter-warehouse');
-if (filterWhEl) filterWhEl.addEventListener('change', renderAll);
+if (filterWhEl) filterWhEl.addEventListener('change', () => {
+    loadTools(1);
+});
+
+// Navegación con flechas del teclado (Izquierda / Derecha)
+document.addEventListener("keydown", (e) => {
+    const activeTag = document.activeElement ? document.activeElement.tagName.toLowerCase() : "";
+    if (activeTag === "input" || activeTag === "textarea" || activeTag === "select") return;
+
+    const activeModal = document.querySelector(".modal-overlay.open, .modal-overlay.active, .modal-overlay[style*='display: flex'], .modal-overlay[style*='display: block']");
+    if (activeModal) return;
+
+    const totalPages = Math.ceil(totalRecords / pageSize);
+    if (e.key === "ArrowLeft" || e.key === "Left") {
+        if (currentPage > 1) {
+            loadTools(currentPage - 1);
+        }
+    } else if (e.key === "ArrowRight" || e.key === "Right") {
+        if (currentPage < totalPages) {
+            loadTools(currentPage + 1);
+        }
+    }
+});
 
 /* ════════════════════════════════════════
    DETAIL MODAL
@@ -414,7 +568,11 @@ async function openDetail(id) {
     const icon = TOOL_ICONS[t.tool_types?.name] || '🛠️';
 
     document.getElementById('detail-band').style.background = st.dot || '#ccc';
-    document.getElementById('detail-icon').textContent = icon;
+    if (t.image_url) {
+        document.getElementById('detail-icon').innerHTML = `<img src="${t.image_url}" style="width:90px;height:90px;object-fit:contain;border-radius:8px;border:1px solid #cbd5e1;background:#fff;cursor:pointer;" onclick="previewImage('${t.image_url.replace(/'/g, "\\'")}', '${t.nombre.replace(/'/g, "\\'")}')" title="Ver imagen completa" />`;
+    } else {
+        document.getElementById('detail-icon').textContent = icon;
+    }
     document.getElementById('detail-code').textContent = t.codigo_head;
     document.getElementById('detail-name').textContent = t.nombre;
     document.getElementById('detail-type').textContent = t.tool_types?.name || 'Sin tipo';
@@ -559,7 +717,7 @@ async function reprintTransferFromDetail() {
             new_warehouse_name,
             notes,
             created_at,
-            herramientas!inner(id, codigo_head, nombre, status, color, marca, modelo, no_serie, descripcion),
+            herramientas!inner(id, codigo_head, nombre, status, color, marca, modelo, no_serie, descripcion, image_url),
             users!herramienta_movements_created_by_fkey(full_name)
           `)
             .eq('herramienta_id', currentDetailTool.id)
@@ -583,6 +741,7 @@ async function reprintTransferFromDetail() {
             modelo: transfer.herramientas?.modelo || currentDetailTool.modelo,
             no_serie: transfer.herramientas?.no_serie || currentDetailTool.no_serie,
             descripcion: transfer.herramientas?.descripcion || currentDetailTool.descripcion,
+            image_url: transfer.herramientas?.image_url || currentDetailTool.image_url,
         };
         const notesStr = transfer.notes || '';
         let kitItems = null;
@@ -676,13 +835,17 @@ function escapeHtml(s) {
 ════════════════════════════════════════ */
 function resetForm() {
     ['tool-id', 'tool-codigo', 'tool-nombre', 'tool-desc', 'tool-color',
-        'tool-marca', 'tool-modelo', 'tool-serie', 'tool-image', 'tool-notes']
-        .forEach(id => { document.getElementById(id).value = ''; });
+        'tool-marca', 'tool-modelo', 'tool-serie', 'tool-notes']
+        .forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.value = '';
+        });
     document.getElementById('tool-tipo').value = '';
     document.getElementById('tool-status').value = 'ACTIVA';
     document.getElementById('tool-project').value = '';
     document.getElementById('tool-warehouse').value = '';
     clearSwatchSelection();
+    removeSelectedToolImage();
 }
 
 function openCreate() {
@@ -713,8 +876,19 @@ function openEdit(id) {
     document.getElementById('tool-status').value = t.status || 'ACTIVA';
     document.getElementById('tool-project').value = t.project_id || '';
     document.getElementById('tool-warehouse').value = t.warehouse_id || '';
-    document.getElementById('tool-image').value = t.image_url || '';
     document.getElementById('tool-notes').value = '';
+
+    if (t.image_url) {
+        selectedToolImageBase64 = t.image_url;
+        const imgPreview = document.getElementById('tool-modal-image-preview');
+        const previewContainer = document.getElementById('tool-image-preview-container');
+        const fileNameText = document.getElementById('tool-file-name-text');
+        if (imgPreview) imgPreview.src = t.image_url;
+        if (previewContainer) previewContainer.style.display = 'block';
+        if (fileNameText) fileNameText.textContent = 'Imagen cargada';
+    } else {
+        removeSelectedToolImage();
+    }
 
     setSwatchByName(t.color || '');
     Modal.open('modal-tool');
@@ -745,7 +919,7 @@ document.getElementById('btn-tool-save').addEventListener('click', async () => {
         status,
         project_id: document.getElementById('tool-project').value || null,
         warehouse_id: document.getElementById('tool-warehouse').value || null,
-        image_url: document.getElementById('tool-image').value.trim() || null,
+        image_url: selectedToolImageBase64 || null,
     };
 
     const btn = document.getElementById('btn-tool-save');
@@ -802,7 +976,7 @@ document.getElementById('btn-tool-save').addEventListener('click', async () => {
         }
 
         Modal.close('modal-tool');
-        await loadTools();
+        await loadTools(currentPage);
 
     } catch (err) {
         Toast.show(err.message || 'Error al guardar', 'error');
@@ -825,7 +999,11 @@ async function openTransfer(id) {
 
     /* Populate tool chip */
     const icon = TOOL_ICONS[t.tool_types?.name] || '🛠️';
-    document.getElementById('transfer-chip-icon').textContent = icon;
+    if (t.image_url) {
+        document.getElementById('transfer-chip-icon').innerHTML = `<img src="${t.image_url}" style="width:64px;height:64px;object-fit:contain;border-radius:6px;background:#fff;border:1px solid #cbd5e1;cursor:pointer;" onclick="previewImage('${t.image_url.replace(/'/g, "\\'")}', '${t.nombre.replace(/'/g, "\\'")}')" title="Ver imagen" />`;
+    } else {
+        document.getElementById('transfer-chip-icon').textContent = icon;
+    }
     document.getElementById('transfer-chip-code').textContent = t.codigo_head;
     document.getElementById('transfer-chip-name').textContent = t.nombre;
 
@@ -890,17 +1068,23 @@ function toggleTransferKitUI() {
     if (body) body.style.display = enabled ? 'block' : 'none';
 }
 
-function resetTransferKitForm(tool) {
+async function resetTransferKitForm(tool) {
     selectedKitToolIds.clear();
     const searchInput = document.getElementById('kit-tools-search');
     if (searchInput) searchInput.value = '';
 
-    // Filter available active tools in the exact same origin warehouse (excluding current main tool)
-    currentOriginKitTools = allTools.filter(x =>
-        x.warehouse_id === tool.warehouse_id &&
-        x.id !== tool.id &&
-        x.is_active !== false
-    );
+    // Consultar herramientas del almacén origen en BD
+    try {
+        const { data } = await db
+            .from('herramientas')
+            .select('*, tool_types(name)')
+            .eq('warehouse_id', tool.warehouse_id)
+            .neq('id', tool.id)
+            .order('codigo_head');
+        currentOriginKitTools = data || [];
+    } catch (e) {
+        currentOriginKitTools = [];
+    }
 
     const enableCheck = document.getElementById('transfer-kit-enable');
     if (enableCheck) enableCheck.checked = false;
@@ -1071,7 +1255,7 @@ document.getElementById('btn-transfer-save').addEventListener('click', async () 
         const countMsg = kitTools.length > 0 ? ` (+${kitTools.length} en kit)` : '';
         Toast.show(`✅ Transferencia de ${t.codigo_head}${countMsg} realizada a ${newWh?.name || 'nuevo almacén'}`, 'success');
         Modal.close('modal-transfer');
-        await loadTools();
+        await loadTools(currentPage);
 
     } catch (err) {
         Toast.show(err.message || (isAlmacenista ? 'Error al cambiar el estatus' : 'Error al transferir'), 'error');
@@ -1209,6 +1393,7 @@ function printTransferFormat({ tool: t, kitTools, kitItems, prevWh, newWh, reaso
         // ── Tool card
         '<div class="tool-card-doc">' +
         '<div class="tool-color-strip" style="background:' + (st.dot || '#ccc') + ';"><\/div>' +
+        (t.image_url ? '<div style="width:110px;height:110px;flex-shrink:0;border:1px solid #e0e0e0;border-radius:6px;overflow:hidden;background:#fff;display:flex;align-items:center;justify-content:center;"><img src="' + t.image_url + '" style="max-width:100%;max-height:100%;object-fit:contain;"/><\/div>' : '') +
         '<div class="tool-info">' +
         '<div class="tool-code-doc">' + (t.codigo_head || '') + '<\/div>' +
         '<div class="tool-name-doc">' + (t.nombre || '') + '<\/div>' +
@@ -1428,30 +1613,10 @@ function printQR() {
 /* ════════════════════════════════════════
    EXPORTAR HERRAMIENTAS A EXCEL
 ════════════════════════════════════════ */
-window.exportToolsExcel = function () {
+window.exportToolsExcel = async function () {
     const q = document.getElementById('search-input').value.toLowerCase().trim();
     const sts = activeStatusFilter || document.getElementById('filter-status').value;
     const whId = document.getElementById('filter-warehouse').value;
-
-    const active = allTools.filter(t => t.is_active !== false);
-
-    const data = active.filter(t => {
-        const mq = !q ||
-            (t.nombre || '').toLowerCase().includes(q) ||
-            (t.codigo_head || '').toLowerCase().includes(q) ||
-            (t.marca || '').toLowerCase().includes(q) ||
-            (t.modelo || '').toLowerCase().includes(q) ||
-            (t.no_serie || '').toLowerCase().includes(q) ||
-            (t.color || '').toLowerCase().includes(q);
-        const ms = !sts || t.status === sts;
-        const mw = !whId || t.warehouse_id === whId;
-        return mq && ms && mw;
-    });
-
-    if (!data || data.length === 0) {
-        Toast.show("No hay herramientas para exportar con los filtros actuales", "info");
-        return;
-    }
 
     const btnExport = document.getElementById("btn-export-excel");
     const origHTML = btnExport.innerHTML;
@@ -1459,6 +1624,34 @@ window.exportToolsExcel = function () {
     btnExport.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:15px;height:15px;animation:spin 1s linear infinite"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg> Exportando...`;
 
     try {
+        let query = db
+            .from('herramientas')
+            .select('*, tool_types(name), projects(name,code), warehouses(name)')
+            .order('codigo_head');
+
+        if (isRestricted) {
+            query = query.in('warehouse_id', allowedWarehouseIds.length > 0 ? allowedWarehouseIds : ['00000000-0000-0000-0000-000000000000']);
+        }
+        if (q) {
+            query = query.or(`nombre.ilike.%${q}%,codigo_head.ilike.%${q}%,marca.ilike.%${q}%,modelo.ilike.%${q}%,no_serie.ilike.%${q}%,color.ilike.%${q}%`);
+        }
+        if (sts) {
+            query = query.eq('status', sts);
+        }
+        if (whId) {
+            query = query.eq('warehouse_id', whId);
+        }
+
+        const { data, error } = await query;
+        if (error) throw error;
+
+        const exportData = data || [];
+
+        if (!exportData || exportData.length === 0) {
+            Toast.show("No hay herramientas para exportar con los filtros actuales", "info");
+            return;
+        }
+
         const statusLabel = {
             ACTIVA: "Activa",
             EN_MANTENIMIENTO: "En mantenimiento",
@@ -1466,8 +1659,7 @@ window.exportToolsExcel = function () {
             RESGUARDO: "Resguardo"
         };
 
-        // Build rows
-        const rows = data.map(t => ({
+        const rows = exportData.map(t => ({
             "CódigoHEAD": t.codigo_head || "",
             "Nombre": t.nombre || "",
             "Tipo": t.tool_types?.name || "",
@@ -1485,31 +1677,20 @@ window.exportToolsExcel = function () {
         const wb = XLSX.utils.book_new();
         const ws = XLSX.utils.json_to_sheet(rows);
 
-        // Columns width
         ws["!cols"] = [
-            { wch: 16 }, // CódigoHEAD
-            { wch: 25 }, // Nombre
-            { wch: 20 }, // Tipo
-            { wch: 15 }, // Marca
-            { wch: 15 }, // Modelo
-            { wch: 15 }, // No. Serie
-            { wch: 10 }, // Color
-            { wch: 15 }, // Estado
-            { wch: 20 }, // Proyecto
-            { wch: 20 }, // Almacén
-            { wch: 30 }, // Descripción
-            { wch: 22 }, // Fecha Registro
+            { wch: 16 }, { wch: 25 }, { wch: 20 }, { wch: 15 },
+            { wch: 15 }, { wch: 15 }, { wch: 10 }, { wch: 15 },
+            { wch: 20 }, { wch: 20 }, { wch: 30 }, { wch: 22 }
         ];
 
         XLSX.utils.book_append_sheet(wb, ws, "HERRAMIENTAS");
 
-        // Metadata sheet
         const metaRows = [
             ["HEAD STORE — Exportación de Herramientas"],
             [""],
             ["Fecha de exportación:", new Date().toLocaleString("es-MX")],
             ["Exportado por:", user.full_name || user.email || "—"],
-            ["Total de registros:", data.length],
+            ["Total de registros:", exportData.length],
         ];
         const wsMeta = XLSX.utils.aoa_to_sheet(metaRows);
         wsMeta["!cols"] = [{ wch: 28 }, { wch: 36 }];
@@ -1517,7 +1698,7 @@ window.exportToolsExcel = function () {
 
         const dateStr = new Date().toISOString().slice(0, 10);
         XLSX.writeFile(wb, `herramientas_headstore_${dateStr}.xlsx`);
-        Toast.show(`Herramientas exportadas: ${data.length} registros`, "success");
+        Toast.show(`Herramientas exportadas: ${exportData.length} registros`, "success");
     } catch (err) {
         console.error("Error exportando herramientas:", err);
         Toast.show("Error al exportar: " + err.message, "error");

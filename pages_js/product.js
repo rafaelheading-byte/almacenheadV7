@@ -1,3 +1,7 @@
+// State of pagination
+let currentPage = 1;
+const pageSize = 50;
+let totalRecords = 0;
 
 const user = Auth.requireAuth();
 // STOREKEEPER solo puede ver el catálogo
@@ -19,7 +23,7 @@ if (user) {
 }
 
 async function loadAll() {
-    await Promise.all([loadProducts(), loadCategories()]);
+    await Promise.all([loadProducts(1), loadCategories()]);
 }
 
 async function loadCategories() {
@@ -40,11 +44,20 @@ async function loadCategories() {
 
 let selectedImageBase64 = null;
 
-async function loadProducts() {
+async function loadProducts(page = 1) {
+    currentPage = page;
     const tbody = document.getElementById("products-body");
     tbody.innerHTML = loadingRow(10);
 
-    const { data, error } = await db
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
+
+    const searchInput = document.getElementById("search-input");
+    const categorySelect = document.getElementById("filter-category");
+    const q = searchInput ? searchInput.value.trim() : "";
+    const cat = categorySelect ? categorySelect.value : "";
+
+    let query = db
         .from("products")
         .select(`
         id,
@@ -64,8 +77,17 @@ async function loadProducts() {
           id,
           name
         )
-      `)
-        .order("name")
+      `, { count: "exact" })
+        .order("name");
+
+    if (q) {
+        query = query.or(`name.ilike.%${q}%,code.ilike.%${q}%,marca.ilike.%${q}%,modelo.ilike.%${q}%`);
+    }
+    if (cat) {
+        query = query.eq("category_id", cat);
+    }
+
+    const { data, error, count } = await query.range(from, to);
 
     console.log("PRODUCTS:", data);
     console.log("ERROR:", error);
@@ -76,12 +98,57 @@ async function loadProducts() {
         return;
     }
     allData = data || [];
+    totalRecords = count !== null && count !== undefined ? count : allData.length;
     renderTable(allData);
+    renderPagination();
+}
+
+function renderPagination() {
+    const totalPages = Math.ceil(totalRecords / pageSize);
+    const container = document.getElementById("pagination");
+    if (!container) return;
+
+    if (totalPages <= 1) {
+        container.innerHTML = totalRecords > 0 
+            ? `<span class="text-muted" style="font-size:0.85rem;">Total: ${totalRecords} producto(s)</span>` 
+            : "";
+        return;
+    }
+
+    const startItem = (currentPage - 1) * pageSize + 1;
+    const endItem = Math.min(currentPage * pageSize, totalRecords);
+
+    container.innerHTML = `
+        <button
+            class="btn btn-secondary btn-sm"
+            ${currentPage === 1 ? "disabled" : ""}
+            onclick="loadProducts(${currentPage - 1})"
+            title="Página Anterior (Flecha ←)"
+            style="display:inline-flex; align-items:center; gap:4px;"
+        >
+            ← Anterior
+        </button>
+
+        <span style="font-size:0.85rem; font-weight:500;">
+            Página <strong>${currentPage}</strong> de <strong>${totalPages}</strong> (${startItem}-${endItem} de ${totalRecords})
+        </span>
+
+        <button
+            class="btn btn-secondary btn-sm"
+            ${currentPage === totalPages ? "disabled" : ""}
+            onclick="loadProducts(${currentPage + 1})"
+            title="Página Siguiente (Flecha →)"
+            style="display:inline-flex; align-items:center; gap:4px;"
+        >
+            Siguiente →
+        </button>
+    `;
 }
 
 function renderTable(data) {
     const tbody = document.getElementById("products-body");
-    document.getElementById("record-count").textContent = `${data.length} producto(s)`;
+    const totalPages = Math.ceil(totalRecords / pageSize) || 1;
+    document.getElementById("record-count").textContent = `${totalRecords} producto(s) [Pág. ${currentPage}/${totalPages}]`;
     if (!data.length) { tbody.innerHTML = emptyRow(10, "Sin productos registrados"); return; }
 
     tbody.innerHTML = data.map(p => {
@@ -128,23 +195,36 @@ function renderTable(data) {
     }).join("");
 }
 
-document.getElementById("search-input").addEventListener("input", applyFilters);
-document.getElementById("filter-category").addEventListener("change", applyFilters);
+let searchTimeout;
+document.getElementById("search-input").addEventListener("input", () => {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => {
+        loadProducts(1);
+    }, 300);
+});
+document.getElementById("filter-category").addEventListener("change", () => {
+    loadProducts(1);
+});
 
-function applyFilters() {
-    const q = document.getElementById("search-input").value.toLowerCase();
-    const cat = document.getElementById("filter-category").value;
-    const filtered = allData.filter(p => {
-        const mq = !q || 
-                   p.name.toLowerCase().includes(q) || 
-                   p.code.toLowerCase().includes(q) ||
-                   (p.marca || '').toLowerCase().includes(q) ||
-                   (p.modelo || '').toLowerCase().includes(q);
-        const mc = !cat || p.categories?.id === cat;
-        return mq && mc;
-    });
-    renderTable(filtered);
-}
+// Navegación con flechas del teclado (Izquierda / Derecha)
+document.addEventListener("keydown", (e) => {
+    const activeTag = document.activeElement ? document.activeElement.tagName.toLowerCase() : "";
+    if (activeTag === "input" || activeTag === "textarea" || activeTag === "select") return;
+
+    const activeModal = document.querySelector(".modal-overlay.open, .modal-overlay.active, .modal-overlay[style*='display: flex'], .modal-overlay[style*='display: block']");
+    if (activeModal) return;
+
+    const totalPages = Math.ceil(totalRecords / pageSize);
+    if (e.key === "ArrowLeft" || e.key === "Left") {
+        if (currentPage > 1) {
+            loadProducts(currentPage - 1);
+        }
+    } else if (e.key === "ArrowRight" || e.key === "Right") {
+        if (currentPage < totalPages) {
+            loadProducts(currentPage + 1);
+        }
+    }
+});
 
 // Configurar carga de archivo de imagen y conversión a Base64
 document.getElementById("prod-image-file").addEventListener("change", (e) => {
@@ -270,7 +350,7 @@ document.getElementById("btn-prod-save").addEventListener("click", async () => {
         if (error) throw error;
         Toast.show(id ? "Producto actualizado" : "Producto creado", "success");
         Modal.close("modal-product");
-        loadProducts();
+        loadProducts(currentPage);
     } catch (err) {
         Toast.show(err.message || "Error al guardar", "error");
     } finally {
@@ -287,25 +367,34 @@ function toggleActive(id, current, name) {
         if (error) { Toast.show(error.message, "error"); return; }
         Toast.show("Producto actualizado", "success");
         Modal.close("modal-confirm");
-        loadProducts();
+        loadProducts(currentPage);
     };
     Modal.open("modal-confirm");
 }
 
-function printAllProducts() {
-    const q = document.getElementById("search-input").value.toLowerCase();
+async function printAllProducts() {
+    const q = document.getElementById("search-input").value.trim();
     const cat = document.getElementById("filter-category").value;
-    const filtered = allData.filter(p => {
-        const mq = !q || 
-                   p.name.toLowerCase().includes(q) || 
-                   p.code.toLowerCase().includes(q) ||
-                   (p.marca || '').toLowerCase().includes(q) ||
-                   (p.modelo || '').toLowerCase().includes(q);
-        const mc = !cat || p.categories?.id === cat;
-        return mq && mc;
-    });
 
-    if (filtered.length === 0) {
+    let query = db
+        .from("products")
+        .select(`
+            id, code, name, description, unit, minimum_stock, image_url, technical_sheet_url, is_active, created_at, category_id, marca, modelo,
+            categories:category_id ( id, name )
+        `)
+        .order("name");
+
+    if (q) {
+        query = query.or(`name.ilike.%${q}%,code.ilike.%${q}%,marca.ilike.%${q}%,modelo.ilike.%${q}%`);
+    }
+    if (cat) {
+        query = query.eq("category_id", cat);
+    }
+
+    const { data: printData, error } = await query;
+    const filtered = printData || [];
+
+    if (error || filtered.length === 0) {
         Toast.show("No hay productos para imprimir", "error");
         return;
     }
